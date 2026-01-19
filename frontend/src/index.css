@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes stream {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+/* ===== FORCE VS CODE–STYLE SCROLLBAR ===== */
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Chrome / Edge */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.28);
+  border-radius: 0 !important; /* force square */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+
+
+/* Light/Dark mode base styles */
+.light {
+  color-scheme: light;
+  --color-bg-primary: #f9fafb;
+  --color-bg-secondary: #ffffff;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-bg-primary: #111827;
+  --color-bg-secondary: #1f2937;
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #d1d5db;
+}
+
+/* Ensure smooth transitions */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Fix for logo in dark mode */
+.dark img:not(.no-invert) {
+  filter: invert(1);
+}
+
+
+
+/* Fix for dark mode background issues */
+.dark-mode {
+  background-color: #111827 !important; /* gray-900 */
+}
+
+.dark-mode body {
+  background-color: #111827 !important; /* gray-900 */
+  color: #f9fafb !important; /* gray-50 */
+}
+
+/* Fix for white backgrounds in dark mode */
+.dark-mode .bg-white,
+.dark-mode .bg-gray-50,
+.dark-mode .bg-slate-100 {
+  background-color: #1f2937 !important; /* gray-800 */
+}
+
+/* Fix for text colors */
+.dark-mode .text-gray-800,
+.dark-mode .text-gray-900,
+.dark-mode .text-slate-800,
+.dark-mode .text-slate-900 {
+  color: #f9fafb !important; /* white */
+}
+
+/* Fix for borders */
+.dark-mode .border-gray-200,
+.dark-mode .border-gray-300 {
+  border-color: #374151 !important; /* gray-700 */
+}
+
+/* Light mode overrides */
+.light-mode {
+  background-color: #f9fafb !important; /* gray-50 */
+}
+
+.light-mode body {
+  background-color: #f9fafb !important; /* gray-50 */
+  color: #111827 !important; /* gray-900 */
+}
+
+.light-mode .bg-gray-800,
+.light-mode .bg-gray-900 {
+  background-color: #ffffff !important; /* white */
+}

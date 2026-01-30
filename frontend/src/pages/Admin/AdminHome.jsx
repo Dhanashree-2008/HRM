@@ -796,7 +796,7 @@ const AdminHome = () => {
         >
           <div className="flex justify-between items-center mb-6">
             <h2 className={`text-lg font-semibold ${theme.text.primary}`}>
-              Weekly Attendance Trends
+              Monthly Attendance Trends
             </h2>
             <button className="text-sm text-purple-600 dark:text-purple-400 hover:underline">
               View Details

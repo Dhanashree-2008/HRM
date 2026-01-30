@@ -1,37 +1,27 @@
-
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-const API_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+import axios from "axios";
 
 /**
- * Uploads an image file to Cloudinary
+ * Uploads an image file to the backend, which handles Cloudinary upload
  * @param {File} file - The image file to upload
  * @returns {Promise<string>} - The secure URL of the uploaded image
  */
 export const uploadImage = async (file) => {
-    if (!CLOUD_NAME || !UPLOAD_PRESET) {
-        throw new Error("Missing Cloudinary configuration");
-    }
-
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
+
+    const token = localStorage.getItem("token");
 
     try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            body: formData,
+        const response = await axios.post("/api/upload", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+                Authorization: `Bearer ${token}`
+            },
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || "Upload failed");
-        }
-
-        const data = await response.json();
-        return data.secure_url;
+        return response.data.secure_url;
     } catch (error) {
-        console.error("Cloudinary upload error:", error);
-        throw error;
+        console.error("Image upload failed:", error);
+        throw new Error(error.response?.data?.message || "Upload failed");
     }
 };

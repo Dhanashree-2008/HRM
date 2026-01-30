@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  HiHome, 
-  HiExclamationCircle, 
+import {
+  HiHome,
+  HiExclamationCircle,
   HiArrowLeft,
   HiSearch,
   HiCloud
@@ -29,7 +29,7 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
-      
+
       {/* Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 floating-card" data-speed="0.2"></div>
@@ -39,7 +39,7 @@ const NotFound = () => {
 
       {/* Main Content */}
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 z-10">
-        
+
         {/* Animated 404 Text */}
         <div className="text-center mb-8">
           <div className="relative inline-block">
@@ -50,14 +50,14 @@ const NotFound = () => {
               <HiExclamationCircle className="w-8 h-8 text-white" />
             </div>
           </div>
-          
+
           {/* Animated Line */}
           <div className="w-32 h-1 bg-gradient-to-r from-blue-500 to-blue-600 mx-auto my-6 rounded-full"></div>
-          
+
           <h2 className="text-4xl font-bold text-slate-800 mb-4">
             Page Not Found
           </h2>
-          
+
           <p className="text-lg text-slate-600 max-w-md mx-auto mb-8">
             Oops! The page you're looking for seems to have wandered off into the digital void.
           </p>
@@ -87,7 +87,7 @@ const NotFound = () => {
             <HiArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
             Go Back
           </button>
-          
+
           <Link
             to="/"
             className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 group"
@@ -115,7 +115,7 @@ const NotFound = () => {
                 <h4 className="font-medium text-slate-800 mb-1">Dashboard</h4>
                 <p className="text-sm text-slate-500">Main dashboard</p>
               </Link>
-              
+
               <Link
                 to="/attendance"
                 className="p-4 bg-slate-50 hover:bg-green-50 rounded-xl border border-slate-200 hover:border-green-200 transition-all duration-200 group"
@@ -126,7 +126,7 @@ const NotFound = () => {
                 <h4 className="font-medium text-slate-800 mb-1">Attendance</h4>
                 <p className="text-sm text-slate-500">Track attendance</p>
               </Link>
-              
+
               <Link
                 to="/employees"
                 className="p-4 bg-slate-50 hover:bg-purple-50 rounded-xl border border-slate-200 hover:border-purple-200 transition-all duration-200 group"
@@ -164,7 +164,7 @@ const NotFound = () => {
         </p>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slideUp {
           from {
             opacity: 0;

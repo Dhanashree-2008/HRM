@@ -1,109 +1,80 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { FiSearch, FiFilter, FiDownload, FiEye, FiTrash2, FiFileText, FiLock, FiCalendar, FiUsers, FiDatabase } from "react-icons/fi";
-import { 
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  AreaChart, Area, Legend 
-} from "recharts";
-import { useTheme,useThemeClasses } from "../../../contexts/ThemeContext";
+import { useTheme, useThemeClasses } from "../../../contexts/ThemeContext";
+
+import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const VaultList = () => {
   const [search, setSearch] = useState("");
   const [selectedDocs, setSelectedDocs] = useState([]);
   const [typeFilter, setTypeFilter] = useState("All");
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const darkMode = useTheme();
-  const theme= useThemeClasses();
+  const theme = useThemeClasses();
 
-  const documents = [
-    { 
-      id: 1, 
-      employee: "Rahul Sharma", 
-      employeeId: "EMP001",
-      type: "Offer Letter", 
-      category: "Employment",
-      uploadedBy: "Simran Kaur",
-      uploadDate: "2024-11-15",
-      size: "2.4 MB",
-      status: "Active"
-    },
-    { 
-      id: 2, 
-      employee: "Simran Kaur", 
-      employeeId: "EMP002",
-      type: "Salary Slip", 
-      category: "Payroll",
-      uploadedBy: "System",
-      uploadDate: "2024-11-01",
-      size: "1.8 MB",
-      status: "Active"
-    },
-    { 
-      id: 3, 
-      employee: "Ankit Mehta", 
-      employeeId: "EMP003",
-      type: "NDA Agreement", 
-      category: "Legal",
-      uploadedBy: "Legal Team",
-      uploadDate: "2024-10-28",
-      size: "3.2 MB",
-      status: "Expired"
-    },
-    { 
-      id: 4, 
-      employee: "Priya Patel", 
-      employeeId: "EMP004",
-      type: "Performance Review", 
-      category: "HR",
-      uploadedBy: "Rohit Sharma",
-      uploadDate: "2024-10-15",
-      size: "1.5 MB",
-      status: "Active"
-    },
-    { 
-      id: 5, 
-      employee: "Rohit Sharma", 
-      employeeId: "EMP005",
-      type: "Background Check", 
-      category: "Verification",
-      uploadedBy: "HR Team",
-      uploadDate: "2024-10-10",
-      size: "4.1 MB",
-      status: "Active"
-    },
-  ];
+  // Fetch documents
+  const fetchDocuments = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("/api/documents", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        // Map backend data to frontend structure if necessary
+        // Backend returns: { id, employeeId, name, type, category, fileUrl, fileSize, uploadDate, employee: { ... } }
+        // Frontend expects: { id, employee, employeeId, type, category, uploadedBy, uploadDate, size, status }
+        const mappedDocs = response.data.documents.map(doc => ({
+          id: doc.id,
+          employee: doc.employee ? doc.employee.fullName : `EMP-${doc.employeeId}`,
+          employeeId: doc.employee?.employeeCode || `ID-${doc.employeeId}`,
+          type: doc.type,
+          category: doc.category,
+          uploadedBy: "System",
+          uploadDate: doc.uploadDate,
+          fileUrl: `http://localhost:5000${doc.fileUrl}`, // Ensure full URL
+          size: doc.fileSize || "Unknown",
+          status: "Active" // Default status as we didn't implement expiry check in backend yet
+        }));
+        setDocuments(mappedDocs);
+      }
+    } catch (error) {
+      console.error("Failed to fetch documents", error);
+      toast.error("Failed to load documents");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Data for visualizations
-  const categoryData = [
-    { name: "Employment", value: 45, color: "#8B5CF6" },
-    { name: "Payroll", value: 32, color: "#10B981" },
-    { name: "Legal", value: 18, color: "#F59E0B" },
-    { name: "HR", value: 25, color: "#3B82F6" },
-    { name: "Verification", value: 15, color: "#EC4899" }
-  ];
+  React.useEffect(() => {
+    fetchDocuments();
+  }, []);
 
-  const uploadTrendData = [
-    { month: "Jan", uploads: 45, storage: 1.2 },
-    { month: "Feb", uploads: 52, storage: 1.5 },
-    { month: "Mar", uploads: 48, storage: 1.3 },
-    { month: "Apr", uploads: 60, storage: 1.8 },
-    { month: "May", uploads: 55, storage: 1.6 },
-    { month: "Jun", uploads: 65, storage: 2.1 }
-  ];
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
 
-  const storageByDept = [
-    { department: "IT", storage: 1.8, employees: 35 },
-    { department: "HR", storage: 1.2, employees: 20 },
-    { department: "Finance", storage: 0.9, employees: 18 },
-    { department: "Marketing", storage: 0.7, employees: 15 },
-    { department: "Operations", storage: 0.2, employees: 12 }
-  ];
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`/api/documents/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Document deleted");
+      fetchDocuments(); // Refresh list
+    } catch (error) {
+      console.error("Delete error", error);
+      toast.error("Failed to delete document");
+    }
+  };
 
+  // Helpers (Moved back)
   const filtered = documents
-    .filter(doc => 
+    .filter(doc =>
       doc.employee.toLowerCase().includes(search.toLowerCase().trim()) ||
       doc.type.toLowerCase().includes(search.toLowerCase().trim())
     )
-    .filter(doc => 
+    .filter(doc =>
       typeFilter === "All" ? true : doc.category === typeFilter
     );
 
@@ -124,7 +95,7 @@ const VaultList = () => {
   };
 
   const getCategoryColor = (category) => {
-    switch(category) {
+    switch (category) {
       case "Employment": return darkMode ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-purple-100 text-purple-800 border border-purple-200";
       case "Payroll": return darkMode ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800 border border-emerald-200";
       case "Legal": return darkMode ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "bg-amber-100 text-amber-800 border border-amber-200";
@@ -135,12 +106,11 @@ const VaultList = () => {
   };
 
   const getStatusColor = (status) => {
-    return status === "Active" 
+    return status === "Active"
       ? darkMode ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800 border border-emerald-200"
       : darkMode ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-rose-100 text-rose-800 border border-rose-200";
   };
 
-  // Helper functions for theme
   const getBgColor = () => darkMode ? "bg-gray-800" : "bg-white";
   const getBorderColor = () => darkMode ? "border-gray-700" : "border-gray-200";
   const getTextColor = () => darkMode ? "text-white" : "text-gray-800";
@@ -148,22 +118,6 @@ const VaultList = () => {
   const getInputBg = () => darkMode ? "bg-gray-900" : "bg-gray-50";
   const getCardBg = () => darkMode ? "bg-gray-700/50" : "bg-gray-100";
   const getHeaderBg = () => darkMode ? "bg-gray-900/50" : "bg-gray-50";
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className={`${getBgColor()} p-3 border ${getBorderColor()} rounded-lg shadow-lg`}>
-          <p className={`font-medium ${getSecondaryTextColor()}`}>{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.value} {entry.name === "storage" ? "GB" : entry.name === "uploads" ? "files" : ""}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="w-full">
@@ -188,101 +142,9 @@ const VaultList = () => {
         </Link>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Total Documents", value: "1,248", icon: <FiFileText className="w-6 h-6" />, color: darkMode ? "text-purple-400" : "text-purple-600", bg: darkMode ? "bg-purple-500/20" : "bg-purple-100" },
-          { label: "Active", value: "1,192", icon: <FiLock className="w-6 h-6" />, color: darkMode ? "text-emerald-400" : "text-emerald-600", bg: darkMode ? "bg-emerald-500/20" : "bg-emerald-100" },
-          { label: "This Month", value: "42", icon: <FiCalendar className="w-6 h-6" />, color: darkMode ? "text-amber-400" : "text-amber-600", bg: darkMode ? "bg-amber-500/20" : "bg-amber-100" },
-          { label: "Storage Used", value: "4.8 GB", icon: <FiDatabase className="w-6 h-6" />, color: darkMode ? "text-blue-400" : "text-blue-600", bg: darkMode ? "bg-blue-500/20" : "bg-blue-100" },
-        ].map((stat, index) => (
-          <div key={index} className={`${getBgColor()} rounded-xl p-5 border ${getBorderColor()} shadow-sm`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-sm ${getSecondaryTextColor()}`}>{stat.label}</p>
-                <h3 className={`text-3xl font-bold ${stat.color} mt-2`}>{stat.value}</h3>
-              </div>
-              <div className={`w-12 h-12 rounded-full ${stat.bg} flex items-center justify-center ${stat.color} border ${darkMode ? 'border-white/10' : 'border-gray-200'}`}>
-                {stat.icon}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Category Distribution */}
-        <div className={`${getBgColor()} rounded-xl p-6 border ${getBorderColor()} shadow-sm`}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className={`text-lg font-semibold ${getTextColor()}`}>Document Categories</h3>
-            <button className="text-sm text-purple-400 hover:underline">View Details</button>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => [`${value} files`, 'Count']} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* Upload Trends */}
-        <div className={`${getBgColor()} rounded-xl p-6 border ${getBorderColor()} shadow-sm`}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className={`text-lg font-semibold ${getTextColor()}`}>Upload Trends</h3>
-            <button className="text-sm text-purple-400 hover:underline">View Details</button>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={uploadTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#E5E7EB"} />
-                <XAxis dataKey="month" stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <YAxis stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Area type="monotone" dataKey="uploads" name="Uploads" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3} />
-                <Area type="monotone" dataKey="storage" name="Storage (GB)" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* Storage by Department */}
-        <div className={`${getBgColor()} rounded-xl p-6 border ${getBorderColor()} shadow-sm`}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className={`text-lg font-semibold ${getTextColor()}`}>Storage by Department</h3>
-            <button className="text-sm text-purple-400 hover:underline">View Details</button>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={storageByDept}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#E5E7EB"} />
-                <XAxis dataKey="department" stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <YAxis stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Bar dataKey="storage" name="Storage (GB)" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="employees" name="Employees" fill="#10B981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
 
       {/* Search & Filter */}
       <div className={`${getBgColor()} rounded-xl p-6 border ${getBorderColor()} shadow-sm mb-6`}>
@@ -312,10 +174,7 @@ const VaultList = () => {
               <option value="HR" className={darkMode ? "bg-gray-800" : "bg-white"}>HR</option>
               <option value="Verification" className={darkMode ? "bg-gray-800" : "bg-white"}>Verification</option>
             </select>
-            <button className={`flex items-center gap-2 px-4 py-3 ${getInputBg()} border ${getBorderColor()} rounded-lg hover:border-purple-500 ${getSecondaryTextColor()} hover:text-purple-600 transition-colors`}>
-              <FiFilter className="w-4 h-4" />
-              More Filters
-            </button>
+
           </div>
         </div>
 
@@ -427,13 +286,28 @@ const VaultList = () => {
                   </td>
                   <td className="p-4 border-b border-gray-700">
                     <div className="flex gap-2">
-                      <button className={`p-2 rounded-lg ${getInputBg()} border ${getBorderColor()} ${getSecondaryTextColor()} hover:text-purple-400 hover:border-purple-500/50 transition-colors`} title="View">
+                      <button
+                        onClick={() => window.open(doc.fileUrl, '_blank')}
+                        className={`p-2 rounded-lg ${getInputBg()} border ${getBorderColor()} ${getSecondaryTextColor()} hover:text-purple-400 hover:border-purple-500/50 transition-colors`}
+                        title="View"
+                      >
                         <FiEye className="w-4 h-4" />
                       </button>
-                      <button className={`p-2 rounded-lg ${getInputBg()} border ${getBorderColor()} text-purple-400 hover:text-purple-300 hover:border-purple-500/50 transition-colors`} title="Download">
+                      <a
+                        href={doc.fileUrl}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`p-2 rounded-lg ${getInputBg()} border ${getBorderColor()} text-purple-400 hover:text-purple-300 hover:border-purple-500/50 transition-colors flex items-center justify-center`}
+                        title="Download"
+                      >
                         <FiDownload className="w-4 h-4" />
-                      </button>
-                      <button className={`p-2 rounded-lg ${getInputBg()} border ${getBorderColor()} text-rose-400 hover:text-rose-300 hover:border-rose-500/50 transition-colors`} title="Delete">
+                      </a>
+                      <button
+                        onClick={() => handleDelete(doc.id)}
+                        className={`p-2 rounded-lg ${getInputBg()} border ${getBorderColor()} text-rose-400 hover:text-rose-300 hover:border-rose-500/50 transition-colors`}
+                        title="Delete"
+                      >
                         <FiTrash2 className="w-4 h-4" />
                       </button>
                     </div>

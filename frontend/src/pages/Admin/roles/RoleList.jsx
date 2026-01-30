@@ -1,69 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FiSearch, FiFilter, FiEdit2, FiTrash2, FiUser, FiPlus, FiTrendingUp, FiShield, FiCheckCircle } from "react-icons/fi";
-import {
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    RadarChart,
-    Radar,
-    PolarGrid,
-    PolarAngleAxis,
-    PolarRadiusAxis,
-    Legend
-} from "recharts";
+import { FiSearch, FiFilter, FiEdit2, FiTrash2, FiUser, FiPlus, FiTrendingUp, FiShield, FiCheckCircle, FiUsers } from "react-icons/fi";
+
 import { useTheme, getThemeClasses } from "../../../contexts/ThemeContext";
+
+import roleService from "../../../services/roleService";
+import { toast } from "react-hot-toast";
 
 const RoleList = () => {
     const [search, setSearch] = useState("");
     const [selectedRoles, setSelectedRoles] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [loading, setLoading] = useState(true);
     const darkMode = useTheme();
     const themeClasses = getThemeClasses(darkMode);
 
-    const roles = [
-        { id: 1, name: "Administrator", permissions: "Full Access", users: 5, createdAt: "2024-01-01", priority: 1 },
-        { id: 2, name: "HR Manager", permissions: "Employee Management, Reports, Approvals", users: 12, createdAt: "2024-02-15", priority: 2 },
-        { id: 3, name: "Department Head", permissions: "Team Management, Approvals", users: 8, createdAt: "2024-03-10", priority: 3 },
-        { id: 4, name: "Employee", permissions: "Self Service, Basic Access", users: 150, createdAt: "2024-01-01", priority: 5 },
-        { id: 5, name: "Finance Manager", permissions: "Payroll, Expenses, Reports", users: 4, createdAt: "2024-02-28", priority: 2 },
-    ];
+    useEffect(() => {
+        fetchRoles();
+    }, []);
 
-    // Data for visualizations
-    const roleDistributionData = [
-        { name: "Employee", value: 150, color: "#8B5CF6" },
-        { name: "HR Manager", value: 12, color: "#10B981" },
-        { name: "Finance Manager", value: 4, color: "#F59E0B" },
-        { name: "Department Head", value: 8, color: "#3B82F6" },
-        { name: "Administrator", value: 5, color: "#EC4899" }
-    ];
+    const fetchRoles = async () => {
+        try {
+            setLoading(true);
+            const data = await roleService.getAllRoles();
+            setRoles(data);
+        } catch (error) {
+            console.error("Error fetching roles:", error);
+            toast.error("Failed to load roles");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const permissionDistribution = [
-        { permission: "Employee Mgmt", admin: 100, manager: 80, employee: 20 },
-        { permission: "Payroll", admin: 100, manager: 70, employee: 0 },
-        { permission: "Reports", admin: 100, manager: 90, employee: 10 },
-        { permission: "Approvals", admin: 100, manager: 85, employee: 5 },
-        { permission: "Settings", admin: 100, manager: 30, employee: 0 },
-    ];
+    const handleDeleteRole = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this role?")) return;
+        try {
+            await roleService.deleteRole(id);
+            toast.success("Role deleted successfully");
+            fetchRoles();
+        } catch (error) {
+            console.error("Error deleting role:", error);
+            toast.error(error.response?.data?.message || "Failed to delete role");
+        }
+    };
 
-    const roleGrowthData = [
-        { month: "Jan", count: 3 },
-        { month: "Feb", count: 4 },
-        { month: "Mar", count: 4 },
-        { month: "Apr", count: 5 },
-        { month: "May", count: 5 },
-        { month: "Jun", count: 5 },
-    ];
+
+
 
     const filtered = roles.filter(role =>
-        role.name.toLowerCase().includes(search.toLowerCase().trim()) ||
-        role.permissions.toLowerCase().includes(search.toLowerCase().trim())
+        role.name.toLowerCase().includes(search.toLowerCase().trim())
+        // || role.permissions.toLowerCase().includes(search.toLowerCase().trim()) // Permissions is now an object, searching by name for now
     );
 
     const toggleSelectRole = (id) => {
@@ -90,21 +76,7 @@ const RoleList = () => {
         return "bg-amber-500/20 text-amber-300 border border-amber-500/30";
     };
 
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className={`${themeClasses.bg.primary} p-3 border ${themeClasses.border.primary} rounded-lg shadow-lg`}>
-                    <p className={themeClasses.text.primary}>{label}</p>
-                    {payload.map((entry, index) => (
-                        <p key={index} className="text-sm" style={{ color: entry.color }}>
-                            {entry.name}: {entry.value}%
-                        </p>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
+
 
     return (
         <div className="w-full">
@@ -130,10 +102,38 @@ const RoleList = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                    { label: "Total Roles", value: "5", change: "+0", trend: "neutral", icon: <FiShield className="w-6 h-6" />, color: "bg-purple-500/20 text-purple-400" },
-                    { label: "Active Users", value: "179", change: "+12", trend: "up", icon: <FiTrendingUp className="w-6 h-6" />, color: "bg-emerald-500/20 text-emerald-400" },
-                    { label: "Default Role", value: "Employee", change: "", trend: "neutral", icon: <FiUser className="w-6 h-6" />, color: "bg-blue-500/20 text-blue-400" },
-                    { label: "Admin Roles", value: "2", change: "", trend: "neutral", icon: <FiShield className="w-6 h-6" />, color: "bg-amber-500/20 text-amber-400" },
+                    {
+                        label: "Total Roles",
+                        value: roles.length,
+                        change: "",
+                        trend: "neutral",
+                        icon: <FiShield className="w-6 h-6" />,
+                        color: "bg-purple-500/20 text-purple-400"
+                    },
+                    {
+                        label: "Assigned Users",
+                        value: roles.reduce((acc, role) => acc + (role.userCount || 0), 0),
+                        change: "",
+                        trend: "neutral",
+                        icon: <FiUsers className="w-6 h-6" />,
+                        color: "bg-emerald-500/20 text-emerald-400"
+                    },
+                    {
+                        label: "Default Role",
+                        value: "Employee",
+                        change: "",
+                        trend: "neutral",
+                        icon: <FiUser className="w-6 h-6" />,
+                        color: "bg-blue-500/20 text-blue-400"
+                    },
+                    {
+                        label: "Admin Roles",
+                        value: roles.filter(r => r.name.toLowerCase().includes('admin')).length,
+                        change: "",
+                        trend: "neutral",
+                        icon: <FiShield className="w-6 h-6" />,
+                        color: "bg-amber-500/20 text-amber-400"
+                    },
                 ].map((stat, index) => (
                     <div key={index} className={`${themeClasses.bg.secondary} rounded-xl p-4 border ${themeClasses.border.primary} shadow-sm`}>
                         <div className="flex items-center justify-between mb-3">
@@ -141,15 +141,19 @@ const RoleList = () => {
                                 {stat.icon}
                             </div>
                             <div className="flex items-center gap-1">
-                                {stat.trend === "up" ? <FiTrendingUp className="w-4 h-4 text-emerald-400" /> :
-                                    stat.trend === "down" ? <div className="w-4 h-4 text-rose-400 rotate-90">↓</div> :
-                                        <div className="w-4 h-0.5 bg-gray-400"></div>}
-                                <span className={`text-sm font-medium ${stat.trend === "up" ? "text-emerald-400" :
-                                        stat.trend === "down" ? "text-rose-400" :
-                                            themeClasses.text.secondary
-                                    }`}>
-                                    {stat.change}
-                                </span>
+                                {stat.change && (
+                                    <>
+                                        {stat.trend === "up" ? <FiTrendingUp className="w-4 h-4 text-emerald-400" /> :
+                                            stat.trend === "down" ? <div className="w-4 h-4 text-rose-400 rotate-90">↓</div> :
+                                                null}
+                                        <span className={`text-sm font-medium ${stat.trend === "up" ? "text-emerald-400" :
+                                            stat.trend === "down" ? "text-rose-400" :
+                                                themeClasses.text.secondary
+                                            }`}>
+                                            {stat.change}
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <h3 className={`text-2xl font-bold ${themeClasses.text.primary}`}>{stat.value}</h3>
@@ -158,78 +162,7 @@ const RoleList = () => {
                 ))}
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                {/* Role Distribution */}
-                <div className={`${themeClasses.bg.secondary} rounded-xl p-6 border ${themeClasses.border.primary} shadow-sm`}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Role Distribution</h3>
-                        <button className="text-sm text-purple-400 hover:underline">View Details</button>
-                    </div>
-                    <div className="h-64 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <PieChart>
-                                <Pie
-                                    data={roleDistributionData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {roleDistributionData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(value) => [`${value} users`, 'Count']} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
 
-                {/* Permission Radar */}
-                <div className={`${themeClasses.bg.secondary} rounded-xl p-6 border ${themeClasses.border.primary} shadow-sm`}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Permission Matrix</h3>
-                        <button className="text-sm text-purple-400 hover:underline">View Details</button>
-                    </div>
-                    <div className="h-64 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <RadarChart data={permissionDistribution}>
-                                <PolarGrid />
-                                <PolarAngleAxis dataKey="permission" stroke={darkMode ? "#9CA3AF" : "#4b5563"} />
-                                <PolarRadiusAxis stroke={darkMode ? "#9CA3AF" : "#4b5563"} />
-                                <Radar name="Admin" dataKey="admin" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3} />
-                                <Radar name="Manager" dataKey="manager" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
-                                <Radar name="Employee" dataKey="employee" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.3} />
-                                <Legend />
-                                <Tooltip content={<CustomTooltip />} />
-                            </RadarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Role Growth */}
-                <div className={`${themeClasses.bg.secondary} rounded-xl p-6 border ${themeClasses.border.primary} shadow-sm`}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Role Growth</h3>
-                        <button className="text-sm text-purple-400 hover:underline">View Details</button>
-                    </div>
-                    <div className="h-64 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <BarChart data={roleGrowthData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
-                                <XAxis dataKey="month" stroke={darkMode ? "#9CA3AF" : "#4b5563"} />
-                                <YAxis stroke={darkMode ? "#9CA3AF" : "#4b5563"} />
-                                <Tooltip />
-                                <Bar dataKey="count" name="Number of Roles" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
 
             {/* Search & Filter */}
             <div className={`${themeClasses.bg.secondary} rounded-xl p-6 border ${themeClasses.border.primary} shadow-sm mb-6`}>
@@ -326,27 +259,24 @@ const RoleList = () => {
                                                 <span className={`px-2 py-1 text-xs rounded-full ${getRoleColor(role.name)}`}>
                                                     {role.name}
                                                 </span>
-                                                {role.priority <= 2 && (
-                                                    <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                                        High Priority
-                                                    </span>
-                                                )}
                                             </div>
                                         </div>
                                     </td>
                                     <td className={`p-4 border-b ${themeClasses.border.primary}`}>
-                                        <p className={`text-sm ${themeClasses.text.secondary} max-w-md`}>{role.permissions}</p>
+                                        <p className={`text-sm ${themeClasses.text.secondary} max-w-md`}>
+                                            {/* Simplified permission display since it's an object now */}
+                                            {role.permissions && Object.keys(role.permissions).filter(k => role.permissions[k]).length} permissions enabled
+                                        </p>
                                     </td>
                                     <td className={`p-4 border-b ${themeClasses.border.primary}`}>
                                         <div className="flex items-center gap-2">
                                             <FiUser className="w-4 h-4 text-gray-400" />
-                                            <span className={`font-medium ${themeClasses.text.primary}`}>{role.users}</span>
+                                            <span className={`font-medium ${themeClasses.text.primary}`}>{role.userCount || 0}</span>
                                             <span className={`text-sm ${themeClasses.text.secondary}`}>users</span>
                                         </div>
                                     </td>
                                     <td className={`p-4 border-b ${themeClasses.border.primary}`}>
-                                        <p className={themeClasses.text.primary}>{role.createdAt}</p>
-                                        <p className={`text-xs ${themeClasses.text.secondary}`}>2 months ago</p>
+                                        <p className={themeClasses.text.primary}>{new Date(role.createdAt).toLocaleDateString()}</p>
                                     </td>
                                     <td className={`p-4 border-b ${themeClasses.border.primary}`}>
                                         <div className="flex gap-2">
@@ -357,7 +287,9 @@ const RoleList = () => {
                                             >
                                                 <FiEdit2 className="w-4 h-4" />
                                             </Link>
-                                            <button className={`p-2 rounded-lg ${themeClasses.bg.tertiary} border ${themeClasses.border.primary} text-rose-400 hover:text-rose-300 hover:border-rose-500/50 transition-colors`}>
+                                            <button
+                                                onClick={() => handleDeleteRole(role.id)}
+                                                className={`p-2 rounded-lg ${themeClasses.bg.tertiary} border ${themeClasses.border.primary} text-rose-400 hover:text-rose-300 hover:border-rose-500/50 transition-colors`}>
                                                 <FiTrash2 className="w-4 h-4" />
                                             </button>
                                         </div>

@@ -216,6 +216,40 @@ const LeaveRequests = () => {
       });
   };
 
+  const handleExport = () => {
+    if (filteredRequests.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const headers = ["Employee", "Employee ID", "Department", "Leave Type", "From Date", "To Date", "Duration", "Reason", "Applied On", "Status"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredRequests.map(req => [
+        `"${req.employee}"`,
+        `"${req.employeeId}"`,
+        `"${req.department}"`,
+        `"${req.leaveType}"`,
+        `"${req.fromDate}"`,
+        `"${req.toDate}"`,
+        `"${req.duration}"`,
+        `"${req.reason.replace(/"/g, '""')}"`,
+        `"${req.appliedOn}"`,
+        `"${req.status}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `leave_requests_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="w-full">
       {/* Header */}
@@ -231,7 +265,10 @@ const LeaveRequests = () => {
           </div>
 
           <div className="flex gap-3">
-            <button className={`flex items-center gap-2 px-4 py-2.5 ${inputBg} border ${inputBorder} ${textPrimary} rounded-lg ${hoverBg} font-medium`}>
+            <button
+              onClick={handleExport}
+              className={`flex items-center gap-2 px-4 py-2.5 ${inputBg} border ${inputBorder} ${textPrimary} rounded-lg ${hoverBg} font-medium`}
+            >
               <FiDownload className="w-4 h-4" />
               Export
             </button>

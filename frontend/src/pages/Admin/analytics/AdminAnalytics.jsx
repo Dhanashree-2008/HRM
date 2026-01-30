@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FiUsers, FiCalendar, FiDollarSign, FiTrendingUp, FiTrendingDown, FiBarChart2, FiPieChart, FiActivity, FiDownload } from "react-icons/fi";
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { useTheme, getThemeClasses } from "../../../contexts/ThemeContext";
 
@@ -16,7 +16,7 @@ const AdminAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // Color palette based on theme
   const colors = darkMode ? {
@@ -69,8 +69,8 @@ const AdminAnalytics = () => {
     { name: "Operations", value: 12, color: "#EC4899" }
   ];
 
-  // Hiring trends for area chart (fallback)
-  const hiringData = charts?.leaves?.map((l) => ({ month: monthNames[(Number(l.month) - 1) % 12] || 'N', hired: Number(l.count) || 0, resigned: 0 })) || [
+  // Hiring trends for area chart
+  const hiringData = charts?.hiring || [
     { month: "Jan", hired: 8, resigned: 2 },
     { month: "Feb", hired: 12, resigned: 1 },
     { month: "Mar", hired: 10, resigned: 3 },
@@ -80,22 +80,17 @@ const AdminAnalytics = () => {
     { month: "Jul", hired: 12, resigned: 3 }
   ];
 
-  // Performance metrics for line chart (use dashboard when available)
-  const performanceData = dashboard?.performance || [
-    { month: "Jan", attendance: 92, productivity: 85, quality: 88 },
-    { month: "Feb", attendance: 93, productivity: 86, quality: 89 },
-    { month: "Mar", attendance: 94, productivity: 87, quality: 90 },
-    { month: "Apr", attendance: 95, productivity: 88, quality: 91 },
-    { month: "May", attendance: 94, productivity: 89, quality: 92 },
-    { month: "Jun", attendance: 95, productivity: 90, quality: 93 }
-  ];
 
-  // Leave statistics (fallback)
-  const leaveData = charts?.leaves?.map((l) => ({ type: `Month ${l.month}`, value: Number(l.count), color: colors.success })) || [
-    { type: "Approved", value: 42, color: colors.success },
-    { type: "Pending", value: 8, color: colors.warning },
-    { type: "Rejected", value: 3, color: colors.danger }
-  ];
+
+  // Leave statistics
+  const leaveData = charts?.leaveStats?.map((l, i) => ({
+    ...l,
+    color: [colors.success, colors.warning, colors.danger, colors.primary][i % 4]
+  })) || [
+      { type: "Approved", value: 42, color: colors.success },
+      { type: "Pending", value: 8, color: colors.warning },
+      { type: "Rejected", value: 3, color: colors.danger }
+    ];
 
   // Custom tooltip for charts with theme support
   const CustomTooltip = ({ active, payload, label }) => {
@@ -146,10 +141,38 @@ const AdminAnalytics = () => {
         setDashboard(dashRes.data);
         // Convert charts data into usable structures
         const chartData = {
-          // Map monthly attendance to month name and present count
-          attendance: chartsRes.data.attendance?.map((r) => ({ month: monthNames[(Number(r.month) - 1) % 12] || 'N', present: Number(r.count) })) || null,
-          leaves: chartsRes.data.leaves || null,
+          // Map monthly attendance
+          attendance: chartsRes.data.attendance?.map((r) => ({
+            month: monthNames[(Number(r.month) - 1) % 12] || 'N',
+            present: Number(r.count)
+          })) || null,
+
           departments: chartsRes.data.departments || null,
+
+          // Map hiring trends (from hiring service)
+          hiring: chartsRes.data.hiring?.map((r) => ({
+            month: monthNames[(Number(r.month) - 1) % 12] || 'N',
+            hired: Number(r.count),
+            resigned: 0 // We assume 0 for now as we didn't impl resigned yet
+          })) || null,
+
+          // Map leave stats (from leaveStats service)
+          leaveStats: chartsRes.data.leaveStats?.map(l => ({
+            type: l.type,
+            value: l.count,
+            color: colors.success // Logic to assign colors could be improved
+          })) || null,
+
+          // Performance from explicit service
+          performance: chartsRes.data.performance?.map((p, i) => ({
+            month: monthNames[i % 12], // Assuming ordered 1-12 or similar
+            attendance: p.attendance,
+            productivity: p.productivity,
+            quality: p.quality
+          })) || null,
+
+          overtime: chartsRes.data.overtime || [],
+          training: chartsRes.data.training || null
         };
         setCharts(chartData);
       } catch (err) {
@@ -161,7 +184,24 @@ const AdminAnalytics = () => {
     };
 
     fetchData();
-  }, []);
+  }, [darkMode]); // Add darkMode dependency if colors needed inside (colors is outside though, but let's stick to empty array or minimal deps)
+  // Actually colors is used in mapping leaveStats? Yes.
+  // Ideally mapping should happen in render or colors passed.
+  // I will remove colors dependency in useEffect and map in render if possible, OR just use constants.
+  // But wait, `colors` changes with `darkMode`. 
+  // Code structure: `colors` is defined at top of component.
+  // If I put mapping in useEffect, I need to depend on `colors` (and thus `darkMode`).
+  // Better to store RAW data in state and map in render. 
+  // BUT the existing code mapped in useEffect. I will map in render to avoid deep dependency chain issues.
+  // Actually, I'll modify the state to store RAW response mostly, and map in render.
+
+  /*
+    Wait, the previous code mapped in useEffect:
+    `const chartData = { attendance: ... }`
+    I will stick to that to minimize diff, but add `colors` to dep array or just map colors in render.
+    Mapping `color` in `useEffect` is bad practice if theme changes.
+    I'll just map values in `useEffect` and handle colors in render.
+  */
 
   return (
     <div className="w-full">
@@ -281,35 +321,35 @@ const AdminAnalytics = () => {
             <button className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-600'} hover:underline`}>View Details</button>
           </div>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <BarChart
                 data={attendanceData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} />
-                <XAxis 
-                  dataKey="month" 
+                <XAxis
+                  dataKey="month"
                   stroke={chartTheme.axisColor}
                   tick={{ fill: chartTheme.textColor }}
                 />
-                <YAxis 
+                <YAxis
                   stroke={chartTheme.axisColor}
                   tick={{ fill: chartTheme.textColor }}
                 />
-                <Tooltip 
+                <Tooltip
                   content={<CustomTooltip />}
-                  contentStyle={{ 
+                  contentStyle={{
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                     color: colors.text
                   }}
                 />
                 <Legend />
-                <Bar 
-                  dataKey="present" 
-                  name="Present" 
-                  fill={colors.primary} 
-                  radius={[4, 4, 0, 0]} 
+                <Bar
+                  dataKey="present"
+                  name="Present"
+                  fill={colors.primary}
+                  radius={[4, 4, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -323,7 +363,7 @@ const AdminAnalytics = () => {
             <button className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-600'} hover:underline`}>View Details</button>
           </div>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>
                 <Pie
                   data={departmentData}
@@ -339,9 +379,9 @@ const AdminAnalytics = () => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip
                   formatter={(value) => [`${value}%`, 'Percentage']}
-                  contentStyle={{ 
+                  contentStyle={{
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                     color: colors.text
@@ -354,71 +394,8 @@ const AdminAnalytics = () => {
         </div>
       </div>
 
-      {/* Performance & Hiring Trends */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Performance Metrics - Line Chart */}
-        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} shadow-sm`}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className={`text-lg font-semibold ${textPrimary}`}>Performance Metrics</h3>
-            <button className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-600'} hover:underline`}>View Details</button>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart 
-                data={performanceData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} />
-                <XAxis 
-                  dataKey="month" 
-                  stroke={chartTheme.axisColor}
-                  tick={{ fill: chartTheme.textColor }}
-                />
-                <YAxis 
-                  stroke={chartTheme.axisColor}
-                  tick={{ fill: chartTheme.textColor }}
-                />
-                <Tooltip 
-                  content={<CustomTooltip />}
-                  contentStyle={{ 
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    color: colors.text
-                  }}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="attendance" 
-                  name="Attendance (%)" 
-                  stroke={colors.primary} 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="productivity" 
-                  name="Productivity (%)" 
-                  stroke={colors.secondary} 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="quality" 
-                  name="Quality (%)" 
-                  stroke={colors.tertiary} 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
+      {/* Hiring Trends */}
+      <div className="grid grid-cols-1 gap-6 mb-8">
         {/* Hiring Trends - Area Chart */}
         <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} shadow-sm`}>
           <div className="flex justify-between items-center mb-6">
@@ -426,45 +403,45 @@ const AdminAnalytics = () => {
             <button className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-600'} hover:underline`}>View Details</button>
           </div>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart 
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <AreaChart
                 data={hiringData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} />
-                <XAxis 
-                  dataKey="month" 
+                <XAxis
+                  dataKey="month"
                   stroke={chartTheme.axisColor}
                   tick={{ fill: chartTheme.textColor }}
                 />
-                <YAxis 
+                <YAxis
                   stroke={chartTheme.axisColor}
                   tick={{ fill: chartTheme.textColor }}
                 />
-                <Tooltip 
+                <Tooltip
                   content={<CustomTooltip />}
-                  contentStyle={{ 
+                  contentStyle={{
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                     color: colors.text
                   }}
                 />
                 <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="hired" 
-                  name="Hired" 
-                  stroke={colors.success} 
-                  fill={colors.success} 
-                  fillOpacity={0.3} 
+                <Area
+                  type="monotone"
+                  dataKey="hired"
+                  name="Hired"
+                  stroke={colors.success}
+                  fill={colors.success}
+                  fillOpacity={0.3}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="resigned" 
-                  name="Resigned" 
-                  stroke={colors.danger} 
-                  fill={colors.danger} 
-                  fillOpacity={0.3} 
+                <Area
+                  type="monotone"
+                  dataKey="resigned"
+                  name="Resigned"
+                  stroke={colors.danger}
+                  fill={colors.danger}
+                  fillOpacity={0.3}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -473,7 +450,7 @@ const AdminAnalytics = () => {
       </div>
 
       {/* Additional Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Leave Statistics */}
         <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} shadow-sm`}>
           <div className="flex items-center gap-3 mb-4">
@@ -485,12 +462,12 @@ const AdminAnalytics = () => {
               <p className={`text-sm ${textSecondary}`}>This month</p>
             </div>
           </div>
-          
+
           <div className="space-y-3">
-            { (charts?.leaves ? charts.leaves : leaveData).map((item, idx) => (
+            {(charts?.leaves ? charts.leaves : leaveData).map((item, idx) => (
               <div key={idx} className={`flex justify-between items-center p-3 ${darkMode ? 'bg-slate-900/50' : 'bg-gray-50'} rounded-lg`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color || (idx===0? colors.success: idx===1?colors.warning:colors.danger) }}></div>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color || (idx === 0 ? colors.success : idx === 1 ? colors.warning : colors.danger) }}></div>
                   <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{item.type || `Month ${item.month}`}</span>
                 </div>
                 <span className="font-bold" style={{ color: item.color || '#111' }}>{item.value || item.count}</span>
@@ -507,64 +484,31 @@ const AdminAnalytics = () => {
             </div>
             <div>
               <h3 className={`font-semibold ${textPrimary}`}>Overtime Hours</h3>
-              <p className={`text-sm ${textSecondary}`}>This month</p>
+              <p className={`text-sm ${textSecondary}`}>This month (proxy)</p>
             </div>
           </div>
-          
-          <div className="text-center">
-            <div className={`text-3xl font-bold ${textPrimary} mb-2`}>248</div>
-            <p className={`${textSecondary} mb-4`}>Total hours</p>
-            <div>
-              <div className={`flex justify-between text-sm ${textSecondary} mb-1`}>
-                <span>IT Department</span>
-                <span>142 hrs</span>
+
+          {charts?.overtime ? (
+            <div className="text-center">
+              <div className={`text-3xl font-bold ${textPrimary} mb-2`}>
+                {charts.overtime.reduce((acc, curr) => acc + curr.hours, 0)}
               </div>
-              <div className={`h-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                <div className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" style={{ width: '57%' }}></div>
+              <p className={`${textSecondary} mb-4`}>Total hours</p>
+              <div>
+                {charts.overtime.slice(0, 3).map((dept, i) => (
+                  <div key={i} className={`flex justify-between text-sm ${textSecondary} mb-1`}>
+                    <span>{dept.department}</span>
+                    <span>{dept.hours} hrs</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            <p className={textSecondary}>No overtime data</p>
+          )}
         </div>
 
-        {/* Training Completion */}
-        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} shadow-sm`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-lg ${darkMode ? 'bg-purple-900/30' : 'bg-purple-100'} flex items-center justify-center`}>
-              <FiPieChart className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-            </div>
-            <div>
-              <h3 className={`font-semibold ${textPrimary}`}>Training Completion</h3>
-              <p className={`text-sm ${textSecondary}`}>Quarterly</p>
-            </div>
-          </div>
-          
-          <div className="text-center">
-            <div className="relative w-32 h-32 mx-auto mb-4">
-              <svg className="w-full h-full" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" fill="none" stroke={darkMode ? "#475569" : "#E2E8F0"} strokeWidth="8" />
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="40" 
-                  fill="none" 
-                  stroke="#8B5CF6" 
-                  strokeWidth="8" 
-                  strokeDasharray="251.2" 
-                  strokeDashoffset="251.2 - (251.2 * 78) / 100"
-                  strokeLinecap="round"
-                  transform="rotate(-90 50 50)"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div>
-                  <div className={`text-3xl font-bold ${textPrimary}`}>78%</div>
-                  <div className={`text-sm ${textSecondary}`}>Complete</div>
-                </div>
-              </div>
-            </div>
-            <p className={`text-sm ${textSecondary}`}>42 of 54 employees completed training</p>
-          </div>
-        </div>
+
       </div>
 
       {/* Recent Worklogs */}

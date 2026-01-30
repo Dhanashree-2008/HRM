@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { 
-  FiDownload, FiFilter, FiCalendar, FiTrendingUp, 
+import { toast } from "react-hot-toast";
+import {
+  FiDownload, FiFilter, FiCalendar, FiTrendingUp,
   FiTrendingDown, FiUsers, FiClock, FiBarChart2,
   FiPieChart, FiActivity, FiTarget, FiAward
 } from "react-icons/fi";
-import { 
+import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, RadialBarChart, RadialBar
@@ -23,38 +24,28 @@ const AttendanceReports = () => {
 
   const departments = [
     { id: "all", name: "All Departments" },
-    { id: "it", name: "IT" },
-    { id: "hr", name: "HR" },
-    { id: "finance", name: "Finance" },
-    { id: "marketing", name: "Marketing" },
+    { id: "IT", name: "IT" },
+    { id: "HR", name: "HR" },
+    { id: "Finance", name: "Finance" },
+    { id: "Marketing", name: "Marketing" },
   ];
 
-  const reportStats = {
-    totalEmployees: 24,
-    averageAttendance: 92.5,
-    totalLateArrivals: 18,
-    totalAbsences: 12,
-    totalLeaves: 8,
-    totalOvertime: 45,
-  };
+  const [reportStats, setReportStats] = useState({
+    totalEmployees: 0,
+    averageAttendance: 0,
+    totalLateArrivals: 0,
+    totalAbsences: 0,
+    totalLeaves: 0,
+    totalOvertime: 0,
+  });
 
-  const [trendData, setTrendData] = useState([
-    { month: "Jan", attendance: 0, late: 0, absent: 0, overtime: 0 },
-    { month: "Feb", attendance: 0, late: 0, absent: 0, overtime: 0 },
-    { month: "Mar", attendance: 0, late: 0, absent: 0, overtime: 0 },
-    { month: "Apr", attendance: 0, late: 0, absent: 0, overtime: 0 },
-    { month: "May", attendance: 0, late: 0, absent: 0, overtime: 0 },
-    { month: "Jun", attendance: 0, late: 0, absent: 0, overtime: 0 },
-  ]);
+  const [departmentStats, setDepartmentStats] = useState([]);
+  const [topPerformers, setTopPerformers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const departmentStats = [
-    { name: "IT", employees: 8, attendance: 95, late: 2, absent: 1, value: 95 },
-    { name: "HR", employees: 4, attendance: 98, late: 0, absent: 0, value: 98 },
-    { name: "Finance", employees: 6, attendance: 90, late: 3, absent: 2, value: 90 },
-    { name: "Marketing", employees: 6, attendance: 92, late: 1, absent: 1, value: 92 },
-  ];
+  const [trendData, setTrendData] = useState([]);
 
-  // Daily attendance pattern
+  // Daily attendance pattern (Mock for now as backend doesn't support hourly yet)
   const dailyPatternData = [
     { hour: "9 AM", attendance: 85, late: 15 },
     { hour: "10 AM", attendance: 95, late: 5 },
@@ -67,15 +58,15 @@ const AttendanceReports = () => {
     { hour: "5 PM", attendance: 82, late: 18 },
   ];
 
-  // Attendance distribution
+  // Attendance distribution (Derived from stats)
   const attendanceDistribution = [
-    { name: "Present", value: 85, color: "#10b981" },
-    { name: "Late", value: 8, color: "#f59e0b" },
-    { name: "Absent", value: 4, color: "#ef4444" },
-    { name: "Leave", value: 3, color: "#3b82f6" },
+    { name: "Present", value: Number(reportStats.averageAttendance) || 0, color: "#10b981" },
+    { name: "Late", value: 5, color: "#f59e0b" }, // Mock data for now
+    { name: "Absent", value: Math.max(0, 100 - (Number(reportStats.averageAttendance) || 0) - 5), color: "#ef4444" },
+    { name: "Leave", value: 0, color: "#3b82f6" },
   ];
 
-  // Overtime comparison
+  // Overtime comparison (Mock for now)
   const overtimeData = [
     { department: "IT", hours: 15 },
     { department: "HR", hours: 8 },
@@ -83,7 +74,7 @@ const AttendanceReports = () => {
     { department: "Marketing", hours: 10 },
   ];
 
-  // Weekly performance
+  // Weekly performance (Mock for now)
   const weeklyPerformance = [
     { day: "Mon", attendance: 91, target: 95 },
     { day: "Tue", attendance: 93, target: 95 },
@@ -96,59 +87,86 @@ const AttendanceReports = () => {
 
   const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
 
-  const generateReport = () => {
-    console.log("Generating report:", {
-      reportType,
-      dateRange,
-      departmentFilter
-    });
+  const generateReport = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const query = new URLSearchParams({
+        start: dateRange.start,
+        end: dateRange.end,
+        department: departmentFilter
+      }).toString();
+
+      const res = await fetch(`/api/reports/analytics/attendance?${query}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch report");
+
+      const data = await res.json();
+
+      setReportStats(data.reportStats);
+      setTrendData(data.trendData);
+      setDepartmentStats(data.departmentStats);
+      setTopPerformers(data.topPerformers);
+
+      toast.success("Report generated successfully");
+
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast.error("Failed to generate report");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const exportReport = async (format) => {
-    if (format !== "csv") {
+    // PDF Handling
+    if (format === "pdf") {
+      window.print();
       return;
     }
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/reports/attendance", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "attendance_report.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("CSV export failed:", err);
+
+    // Excel/CSV Handling
+    if (format === "csv" || format === "excel") {
+      try {
+        toast.loading("Exporting report...");
+        const token = localStorage.getItem("token");
+
+        // Pass current filters
+        const query = new URLSearchParams({
+          start: dateRange.start,
+          end: dateRange.end,
+          department: departmentFilter
+        }).toString();
+
+        const res = await fetch(`/api/reports/attendance?${query}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error("Export failed");
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `attendance_report_${dateRange.start}_to_${dateRange.end}.${format === 'excel' ? 'csv' : 'csv'}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        toast.dismiss();
+        toast.success("Export successful");
+      } catch (err) {
+        console.error("Export failed:", err);
+        toast.dismiss();
+        toast.error("Failed to export report");
+      }
     }
   };
 
   useEffect(() => {
-    const fetchReportData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("/api/dashboard/charts/admin", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-        const mapped = data.attendance?.map(m => ({
-          month: months[(Number(m.month) - 1) % 12],
-          attendance: Number(m.count),
-          late: 0,
-          absent: 0,
-          overtime: 0
-        })) || [];
-        setTrendData(mapped.length ? mapped : trendData);
-      } catch (err) {
-        console.error("Failed to load charts:", err);
-      }
-    };
-    fetchReportData();
+    generateReport();
   }, []);
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -213,7 +231,7 @@ const AttendanceReports = () => {
             <input
               type="date"
               value={dateRange.start}
-              onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className={`w-full px-4 py-3 ${themeClasses.input.bg} border ${themeClasses.input.border} ${themeClasses.input.text} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500`}
             />
           </div>
@@ -225,7 +243,7 @@ const AttendanceReports = () => {
             <input
               type="date"
               value={dateRange.end}
-              onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className={`w-full px-4 py-3 ${themeClasses.input.bg} border ${themeClasses.input.border} ${themeClasses.input.text} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500`}
             />
           </div>
@@ -256,7 +274,7 @@ const AttendanceReports = () => {
             <FiFilter className="w-5 h-5" />
             Generate Report
           </button>
-          
+
           <div className="flex gap-2">
             <button
               onClick={() => exportReport("pdf")}
@@ -324,39 +342,39 @@ const AttendanceReports = () => {
             </div>
             <FiActivity className="w-6 h-6 text-purple-400" />
           </div>
-          
+
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
                 <XAxis dataKey="month" stroke={darkMode ? "#9ca3af" : "#4b5563"} />
                 <YAxis stroke={darkMode ? "#9ca3af" : "#4b5563"} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="attendance" 
-                  name="Attendance %" 
-                  stroke="#10b981" 
-                  fill="url(#colorAttendance)" 
+                <Area
+                  type="monotone"
+                  dataKey="attendance"
+                  name="Attendance %"
+                  stroke="#10b981"
+                  fill="url(#colorAttendance)"
                   strokeWidth={2}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="late" 
-                  name="Late Arrivals" 
-                  stroke="#f59e0b" 
-                  fill="url(#colorLate)" 
+                <Area
+                  type="monotone"
+                  dataKey="late"
+                  name="Late Arrivals"
+                  stroke="#f59e0b"
+                  fill="url(#colorLate)"
                   strokeWidth={2}
                 />
                 <defs>
                   <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
                   </linearGradient>
                   <linearGradient id="colorLate" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
               </AreaChart>
@@ -373,9 +391,9 @@ const AttendanceReports = () => {
             </div>
             <FiPieChart className="w-6 h-6 text-purple-400" />
           </div>
-          
+
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>
                 <Pie
                   data={attendanceDistribution}
@@ -395,7 +413,7 @@ const AttendanceReports = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-2 mt-4">
             {attendanceDistribution.map((item, index) => (
               <div key={index} className={`flex items-center gap-2 p-2 rounded-lg ${themeClasses.bg.tertiary}`}>
@@ -416,25 +434,25 @@ const AttendanceReports = () => {
             </div>
             <FiTarget className="w-6 h-6 text-purple-400" />
           </div>
-          
+
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={dailyPatternData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
                 <XAxis dataKey="hour" stroke={darkMode ? "#9ca3af" : "#4b5563"} />
                 <YAxis stroke={darkMode ? "#9ca3af" : "#4b5563"} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Bar 
-                  dataKey="attendance" 
-                  name="Attendance %" 
-                  fill="#10b981" 
+                <Bar
+                  dataKey="attendance"
+                  name="Attendance %"
+                  fill="#10b981"
                   radius={[4, 4, 0, 0]}
                 />
-                <Bar 
-                  dataKey="late" 
-                  name="Late Arrivals" 
-                  fill="#f59e0b" 
+                <Bar
+                  dataKey="late"
+                  name="Late Arrivals"
+                  fill="#f59e0b"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -451,26 +469,26 @@ const AttendanceReports = () => {
             </div>
             <FiAward className="w-6 h-6 text-purple-400" />
           </div>
-          
+
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart 
-                innerRadius="10%" 
-                outerRadius="80%" 
-                data={departmentStats} 
-                startAngle={180} 
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <RadialBarChart
+                innerRadius="10%"
+                outerRadius="80%"
+                data={departmentStats}
+                startAngle={180}
                 endAngle={0}
               >
-                <RadialBar 
-                  minAngle={15} 
-                  label={{ fill: darkMode ? '#fff' : '#000', position: 'insideStart' }} 
-                  background 
-                  dataKey="value" 
+                <RadialBar
+                  minAngle={15}
+                  label={{ fill: darkMode ? '#fff' : '#000', position: 'insideStart' }}
+                  background
+                  dataKey="value"
                 />
-                <Legend 
-                  iconSize={10} 
-                  layout="vertical" 
-                  verticalAlign="middle" 
+                <Legend
+                  iconSize={10}
+                  layout="vertical"
+                  verticalAlign="middle"
                   wrapperStyle={{ right: 0 }}
                 />
                 <Tooltip />
@@ -489,29 +507,29 @@ const AttendanceReports = () => {
           </div>
           <FiTarget className="w-6 h-6 text-purple-400" />
         </div>
-        
+
         <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={weeklyPerformance}>
               <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
               <XAxis dataKey="day" stroke={darkMode ? "#9ca3af" : "#4b5563"} />
               <YAxis stroke={darkMode ? "#9ca3af" : "#4b5563"} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="attendance" 
-                name="Actual Attendance" 
-                stroke="#3b82f6" 
+              <Line
+                type="monotone"
+                dataKey="attendance"
+                name="Actual Attendance"
+                stroke="#3b82f6"
                 strokeWidth={3}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="target" 
-                name="Target" 
-                stroke="#10b981" 
+              <Line
+                type="monotone"
+                dataKey="target"
+                name="Target"
+                stroke="#10b981"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={{ r: 3 }}
@@ -556,11 +574,10 @@ const AttendanceReports = () => {
                     <div className="flex items-center gap-3">
                       <div className="flex-1">
                         <div className={`h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full overflow-hidden`}>
-                          <div 
-                            className={`h-full rounded-full ${
-                              dept.attendance >= 95 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                          <div
+                            className={`h-full rounded-full ${dept.attendance >= 95 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
                               dept.attendance >= 90 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-rose-500 to-rose-400'
-                            }`}
+                              }`}
                             style={{ width: `${dept.attendance}%` }}
                           ></div>
                         </div>
@@ -575,12 +592,11 @@ const AttendanceReports = () => {
                     <span className="font-bold text-rose-400">{dept.absent}</span>
                   </td>
                   <td className="p-4">
-                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
-                      dept.attendance >= 95 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium border ${dept.attendance >= 95 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
                       dept.attendance >= 90 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
-                    }`}>
+                      }`}>
                       {dept.attendance >= 95 ? 'Excellent' :
-                       dept.attendance >= 90 ? 'Good' : 'Needs Improvement'}
+                        dept.attendance >= 90 ? 'Good' : 'Needs Improvement'}
                     </span>
                   </td>
                 </tr>
@@ -598,14 +614,9 @@ const AttendanceReports = () => {
             <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Top Performers</h3>
             <FiAward className="w-6 h-6 text-purple-400" />
           </div>
-          
+
           <div className="space-y-4">
-            {[
-              { name: "Simran Kaur", department: "HR", attendance: 100, perfectMonths: 6, trend: "up" },
-              { name: "Rahul Sharma", department: "IT", attendance: 98, perfectMonths: 5, trend: "up" },
-              { name: "Priya Patel", department: "IT", attendance: 97, perfectMonths: 4, trend: "stable" },
-              { name: "Ankit Mehta", department: "Marketing", attendance: 96, perfectMonths: 3, trend: "up" },
-            ].map((emp, index) => (
+            {topPerformers.map((emp, index) => (
               <div key={index} className={`flex items-center justify-between p-3 rounded-lg hover:${themeClasses.bg.tertiary}/50 transition-colors border ${themeClasses.border.primary}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 flex items-center justify-center text-white font-bold">
@@ -618,7 +629,7 @@ const AttendanceReports = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-emerald-400">{emp.attendance}%</p>
-                  <p className={`text-xs ${themeClasses.text.muted}`}>{emp.perfectMonths} perfect months</p>
+                  <p className={`text-xs ${themeClasses.text.muted}`}>Attendance Rate</p>
                 </div>
               </div>
             ))}
@@ -631,18 +642,18 @@ const AttendanceReports = () => {
             <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Overtime Hours by Department</h3>
             <FiClock className="w-6 h-6 text-purple-400" />
           </div>
-          
+
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={overtimeData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
                 <XAxis dataKey="department" stroke={darkMode ? "#9ca3af" : "#4b5563"} />
                 <YAxis stroke={darkMode ? "#9ca3af" : "#4b5563"} />
                 <Tooltip />
-                <Bar 
-                  dataKey="hours" 
-                  name="Overtime Hours" 
-                  fill="#f59e0b" 
+                <Bar
+                  dataKey="hours"
+                  name="Overtime Hours"
+                  fill="#f59e0b"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>

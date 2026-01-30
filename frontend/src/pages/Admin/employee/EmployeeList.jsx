@@ -153,8 +153,7 @@ const EmployeeList = () => {
     darkMode ? "bg-gray-900/50" : "bg-gray-100";
 
   const getCheckboxClasses = () =>
-    `rounded border-gray-400 ${
-      darkMode ? "bg-gray-700 border-gray-600" : "bg-gray-200"
+    `rounded border-gray-400 ${darkMode ? "bg-gray-700 border-gray-600" : "bg-gray-200"
     } text-purple-500 focus:ring-purple-500/20`;
 
   return (
@@ -232,10 +231,7 @@ const EmployeeList = () => {
               <option value="Accountant">Accountant</option>
             </select>
 
-            <button className={`flex items-center gap-2 px-4 py-3 ${theme.input.bg} border ${theme.input.border} rounded-lg hover:border-purple-500 ${theme.text.secondary} hover:text-purple-600 transition-colors`}>
-              <FiFilter />
-              More Filters
-            </button>
+
           </div>
         </div>
 
@@ -310,7 +306,17 @@ const EmployeeList = () => {
                   <td className={`p-4 border-b ${theme.border.primary}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-r from-purple-600 to-purple-400">
-                        {emp.avatar}
+                        {
+                          emp.avatar.length > 2 ? (
+                            <img
+                              src={emp.avatar}
+                              alt={emp.name}
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          ) : (
+                            <p>{emp.avatar}</p>
+                          )
+                        }
                       </div>
                       <div>
                         <p className={`font-medium ${theme.text.primary}`}>{emp.name}</p>
@@ -351,11 +357,10 @@ const EmployeeList = () => {
                     </div>
                   </td>
                   <td className={`p-4 border-b ${theme.border.primary}`}>
-                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border ${
-                      emp.status === "Active"
-                        ? `${darkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border-emerald-300'}`
-                        : `${darkMode ? 'bg-gray-900/50 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-300'}`
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border ${emp.status === "Active"
+                      ? `${darkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border-emerald-300'}`
+                      : `${darkMode ? 'bg-gray-900/50 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-300'}`
+                      }`}>
                       <span className={`w-2 h-2 rounded-full ${emp.status === "Active" ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
                       {emp.status}
                     </span>

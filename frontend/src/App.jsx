@@ -2,70 +2,92 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { Toaster } from "react-hot-toast";
 
 /* Public */
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./components/NotFound";
+import Homepage from "./pages/Homepage";
+import CareersPage from "./pages/CareersPage";
 
 /* Layouts */
 import AdminLayout from "./layouts/AdminLayout";
-import ManagerLayout from "./layouts/ManagerLayout";
 import EmployeeLayout from "./layouts/EmployeeLayout";
+import MainLayout from './pages/manager/MainLayout'; // Manager Main Layout
 
 /* Dashboards */
 import AdminHome from "./pages/Admin/AdminHome";
-import ManagerHome from "./pages/Manager/ManagerHome";
 import EmployeeHome from "./pages/Employee/EmployeeHome";
+import Dashboard from './pages/manager/Dashboard'; // Manager Dashboard
 
-/* Employees */
+/* Manager Pages */
+import EmployeeManagement from './pages/manager/EmployeeManagement';
+import AttendanceTracking from './pages/manager/AttendanceTracking';
+import LeaveApproval from './pages/manager/LeaveApproval';
+import Roles from './pages/manager/Roles';
+import Recruitment from './pages/manager/Recruitment';
+import SecureVault from './pages/manager/SecureVault';
+import Settings from './pages/manager/Settings';
+import EmployeeHierarchy from './pages/manager/EmployeeHierarchy';
+
+// Manager Add/Edit Imports with Aliases to avoid conflict with Admin
+import ManagerDepartmentList from './pages/manager/DepartmentList';
+import ManagerAddDepartment from './pages/manager/AddDepartment';
+
+
+import ManagerAddRole from './pages/manager/AddRole';
+import ManagerLeavePolicy from './pages/manager/LeavePolicy';
+import ManagerUploadDocument from './pages/manager/UploadDocument';
+
+/* Employees (Admin) */
 import EmployeeList from "./pages/Admin/employee/EmployeeList";
-import AddEmployee from "./pages/Admin/employee/AddEmployee";
+import AdminAddEmployee from "./pages/Admin/employee/AddEmployee";
 import EditEmployee from "./pages/Admin/employee/EditEmployee";
 import EmployeeProfile from "./pages/Admin/employee/EmployeeProfile";
 
-
-/* Departments */
+/* Departments (Admin) */
 import DepartmentList from "./pages/Admin/department/DepartmentList";
-import AddDepartment from "./pages/Admin/department/AddDepartment";
+import AdminAddDepartment from "./pages/Admin/department/AddDepartment";
 import EditDepartment from "./pages/Admin/department/EditDepartment";
 import DepartmentDetails from "./pages/Admin/department/DepartmentDetails";
 
-/* Attendance */
+/* Attendance (Admin) */
 import DailyAttendance from "./pages/Admin/attendance/AttendanceManagement";
 import MonthlyAttendance from "./pages/Admin/attendance/MonthlyAttendance";
 import AttendanceReports from "./pages/Admin/attendance/AttendanceReports";
 
-/* Leaves */
+/* Leaves (Admin) */
 import LeaveRequests from "./pages/Admin/leaves/LeaveRequests";
-import LeavePolicy from "./pages/Admin/leaves/LeavePolicy";
-import ManagerLeaves from "./pages/Manager/ManagerLeaves";
-import ManagerAttendance from "./pages/Manager/ManagerAttendance";
+import AdminLeavePolicy from "./pages/Admin/leaves/LeavePolicy";
 
-/* Roles */
+/* Roles (Admin) */
 import RoleList from "./pages/Admin/roles/RoleList";
-import AddRole from "./pages/Admin/roles/AddRole";
+import AdminAddRole from "./pages/Admin/roles/AddRole";
 import EditRole from "./pages/Admin/roles/EditRole";
 
-/* Recruitment */
+/* Recruitment (Admin) */
 import JobList from "./pages/Admin/recruitment/JobList";
 import AddJob from "./pages/Admin/recruitment/AddJob";
 import ApplicationsList from "./pages/Admin/recruitment/ApplicationsList";
 import ApplicationDetails from "./pages/Admin/recruitment/ApplicationDetails";
-import CvSummarizer from "./pages/Admin/recruitment/CVSummarizer";
+import CvSummarizer from "./pages/Admin/recruitment/CvSummarizer";
 
-/* Vault */
+/* Vault (Admin) */
 import VaultList from "./pages/Admin/vault/VaultList";
-import UploadDocument from "./pages/Admin/vault/UploadDocument";
+import AdminUploadDocument from "./pages/Admin/vault/UploadDocument";
 
-/* Analytics */
+/* Analytics (Admin) */
 import AdminAnalytics from "./pages/Admin/analytics/AdminAnalytics";
 
-/* Notifications */
+/* Payroll (Admin) */
+import AdminPayslip from "./pages/Admin/payslip/AdminPayslip";
+
+/* Notifications (Admin) */
 import Notifications from "./pages/Admin/notifications/Notifications";
 
-/* Settings */
+/* Settings (Admin) */
 import CompanySettings from "./pages/Admin/settings/CompanySettings";
 
 function App() {
@@ -95,46 +117,75 @@ function App() {
     fetchUser();
   }, []);
 
-  /* Role-based Route Guards */
-  const AdminRoute = ({ children }) => {
-    const token = localStorage.getItem("token");
-    if (!token) return <Navigate to="/login" />;
-    if (user && user.role !== "ADMIN") {
-      // Redirect based on role
-      if (user.role === "MANAGER") return <Navigate to="/manager/dashboard" />;
-      if (user.role === "EMPLOYEE") return <Navigate to="/employee/dashboard" />;
-    }
-    return children;
-  };
-
-  const ManagerRoute = ({ children }) => {
-    const token = localStorage.getItem("token");
-    if (!token) return <Navigate to="/login" />;
-    if (user && user.role !== "MANAGER" && user.role !== "ADMIN") {
-      if (user.role === "EMPLOYEE") return <Navigate to="/employee/dashboard" />;
-      if (user.role === "ADMIN") return <Navigate to="/admin/dashboard" />;
-      return <Navigate to="/login" />;
-    }
-    return children;
-  };
-
-  const EmployeeRoute = ({ children }) => {
-    const token = localStorage.getItem("token");
-    if (!token) return <Navigate to="/login" />;
-    if (user && user.role !== "EMPLOYEE" && user.role !== "ADMIN" && user.role !== "MANAGER") {
-      if (user.role === "ADMIN") return <Navigate to="/admin/dashboard" />;
-      if (user.role === "MANAGER") return <Navigate to="/manager/dashboard" />;
-      return <Navigate to="/login" />;
-    }
-    return children;
-  };
-
   // Helper to get redirect path based on role
   const getRoleRedirect = (role) => {
     if (role === "ADMIN") return "/admin/dashboard";
     if (role === "MANAGER") return "/manager/dashboard";
     if (role === "EMPLOYEE") return "/employee/dashboard";
     return "/login";
+  };
+
+  /* Role-based Route Guards */
+  const AdminRoute = ({ user, children }) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (!user) {
+      return null; // or loader
+    }
+
+    if (user.role !== "ADMIN") {
+      return <Navigate to={getRoleRedirect(user.role)} replace />;
+    }
+
+    return children;
+  };
+
+
+  const ManagerRoute = ({ user, children }) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.role !== "MANAGER" && user.role !== "ADMIN") {
+      return <Navigate to={getRoleRedirect(user.role)} replace />;
+    }
+
+    return children;
+  };
+
+
+  const EmployeeRoute = ({ user, children }) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (!user) {
+      return null;
+    }
+
+    if (!["EMPLOYEE", "MANAGER", "ADMIN"].includes(user.role)) {
+      return <Navigate to="/login" replace />;
+    }
+
+    return children;
+  };
+
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
   };
 
   if (isLoading) {
@@ -147,9 +198,11 @@ function App() {
 
   return (
     <ThemeProvider>
+      <Toaster position="top-right" />
       <Routes>
         {/* Public */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Homepage />} />
+        <Route path="/careers" element={<CareersPage />} />
         <Route
           path="/login"
           element={localStorage.getItem("token") && user ? <Navigate to={getRoleRedirect(user.role)} /> : <Login setUser={setUser} />}
@@ -164,8 +217,8 @@ function App() {
         <Route
           path="/admin"
           element={
-            <AdminRoute>
-              <AdminLayout />
+            <AdminRoute user={user}>
+              <AdminLayout logout={handleLogout} />
             </AdminRoute>
           }
         >
@@ -175,21 +228,19 @@ function App() {
 
           {/* Employees */}
           <Route path="employees" element={<EmployeeList />} />
-          <Route path="employees/add" element={<AddEmployee />} />
+          <Route path="employees/add" element={<AdminAddEmployee />} />
           <Route path="employees/edit/:id" element={<EditEmployee />} />
           <Route path="employees/:id" element={<EmployeeProfile />} />
 
-
-
           {/* Departments */}
           <Route path="departments" element={<DepartmentList />} />
-          <Route path="departments/add" element={<AddDepartment />} />
+          <Route path="departments/add" element={<AdminAddDepartment />} />
           <Route path="departments/edit/:id" element={<EditDepartment />} />
           <Route path="departments/:id" element={<DepartmentDetails />} />
 
           {/* Roles */}
           <Route path="roles" element={<RoleList />} />
-          <Route path="roles/add" element={<AddRole />} />
+          <Route path="roles/add" element={<AdminAddRole />} />
           <Route path="roles/edit/:id" element={<EditRole />} />
 
           {/* Attendance */}
@@ -199,7 +250,7 @@ function App() {
 
           {/* Leaves */}
           <Route path="leaves/requests" element={<LeaveRequests />} />
-          <Route path="leaves/policy" element={<LeavePolicy />} />
+          <Route path="leaves/policy" element={<AdminLeavePolicy />} />
 
           {/* Recruitment */}
           <Route path="recruitment/jobs" element={<JobList />} />
@@ -210,13 +261,17 @@ function App() {
 
           {/* Vault */}
           <Route path="vault" element={<VaultList />} />
-          <Route path="vault/upload" element={<UploadDocument />} />
+          <Route path="vault/upload" element={<AdminUploadDocument />} />
 
           {/* Analytics */}
           <Route path="analytics" element={<AdminAnalytics />} />
 
+
           {/* Notifications */}
           <Route path="notifications" element={<Notifications />} />
+
+          {/* Payroll */}
+          <Route path="payroll/payslips" element={<AdminPayslip />} />
 
           {/* Settings */}
           <Route path="settings" element={<CompanySettings />} />
@@ -226,25 +281,53 @@ function App() {
         <Route
           path="/manager"
           element={
-            <ManagerRoute>
-              <ManagerLayout />
+            <ManagerRoute user={user}>
+              <MainLayout logout={handleLogout} />
             </ManagerRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" />} />
-          <Route path="dashboard" element={<ManagerHome />} />
-          <Route path="attendance" element={<ManagerAttendance />} />
-          <Route path="leaves" element={<ManagerLeaves />} />
-          <Route path="worklogs" element={<div className="p-6">Worklogs Review - Coming Soon</div>} />
-          <Route path="settings" element={<div className="p-6">Settings - Coming Soon</div>} />
+          <Route index element={<Navigate to="/manager/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+
+          {/* Employee Management */}
+          <Route path="employees" element={<EmployeeManagement />} />
+          <Route path="employees/hierarchy" element={<EmployeeHierarchy />} />
+
+          {/* Departments */}
+          <Route path="departments" element={<ManagerDepartmentList />} />
+          <Route path="departments/add" element={<ManagerAddDepartment />} />
+
+
+          {/* Roles & Permissions */}
+          <Route path="roles" element={<Roles />} />
+          <Route path="roles/add" element={<ManagerAddRole />} />
+
+          {/* Attendance Tracking (direct link) */}
+          <Route path="attendance" element={<AttendanceTracking />} />
+
+          {/* Leave Management */}
+          <Route path="leave-approval" element={<LeaveApproval />} />
+          <Route path="leave-policy" element={<ManagerLeavePolicy />} />
+
+          {/* Recruitment */}
+          <Route path="recruitment" element={<Recruitment />} />
+
+          {/* Secure Vault */}
+          <Route path="documents" element={<SecureVault />} />
+          <Route path="documents/upload" element={<ManagerUploadDocument />} />
+
+          {/* Settings (direct link) */}
+          <Route path="settings" element={<Settings />} />
+
+          <Route path="*" element={<Navigate to="/manager/dashboard" replace />} />
         </Route>
 
         {/* ================= EMPLOYEE ROUTES ================= */}
         <Route
           path="/employee"
           element={
-            <EmployeeRoute>
-              <EmployeeLayout />
+            <EmployeeRoute user={user}>
+              <EmployeeLayout logout={handleLogout} />
             </EmployeeRoute>
           }
         >

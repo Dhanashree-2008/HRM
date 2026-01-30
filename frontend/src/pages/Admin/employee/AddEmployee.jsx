@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiUser, FiMail, FiPhone, FiCalendar, FiMapPin, FiBriefcase, FiUpload, FiArrowLeft } from "react-icons/fi";
 import { HiOutlineOfficeBuilding } from "react-icons/hi";
 import { Link, useNavigate } from "react-router-dom";
@@ -39,6 +39,71 @@ const AddEmployee = () => {
 
   const darkMode = useTheme() || false; // Default to false if undefined
   const theme = useThemeClasses();
+  const [managers, setManagers] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const [employeesRes, departmentsRes] = await Promise.all([
+          axios.get("/api/admin/employees", { headers }),
+          axios.get("/api/departments", { headers })
+        ]);
+
+        setAllEmployees(employeesRes.data);
+        setDepartments(departmentsRes.data);
+
+        // Filter users who are MANAGERS or ADMINS and have an employee profile
+        const managerList = employeesRes.data
+          .filter(user => (user.role === 'MANAGER' || user.role === 'ADMIN') && user.employee)
+          .map(user => ({
+            id: user.employee.id,
+            fullName: user.employee.fullName,
+            designation: user.employee.designation
+          }));
+
+        setManagers(managerList);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Auto-generate Employee ID when role or employees list changes
+  useEffect(() => {
+    // Only proceed if we have a role and we have fetched employees (or if list is empty but fetched - wait, if list is empty length is 0)
+    // Actually, if list is empty, maxId is 0, next is 001. That is correct.
+    if (!formData.systemRole) return;
+
+    // Determine prefix based on role
+    const prefix = (formData.systemRole === "MANAGER" || formData.systemRole === "ADMIN") ? "MGR" : "EMP";
+
+    // Find highest ID with this prefix
+    let maxId = 0;
+    allEmployees.forEach(user => {
+      if (user.employee && user.employee.employeeCode && user.employee.employeeCode.startsWith(prefix)) {
+        const numPart = parseInt(user.employee.employeeCode.replace(prefix, ''), 10);
+        if (!isNaN(numPart) && numPart > maxId) {
+          maxId = numPart;
+        }
+      }
+    });
+
+    // Set next ID
+    const nextId = `${prefix}${String(maxId + 1).padStart(3, '0')}`;
+
+    setFormData(prev => ({
+      ...prev,
+      employeeId: nextId
+    }));
+
+  }, [formData.systemRole, allEmployees]);
 
 
   const handleChange = (e) => {
@@ -99,13 +164,26 @@ const AddEmployee = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent premature submission: If not on last step, go to next step
+    if (activeStep < totalSteps) {
+      handleNext();
+      return;
+    }
+
     const allErrors = validateStep(1);
     const step2Errors = validateStep(2);
+    // Step 3 validation if any (currently none required in validateStep but we should check)
+    // const step3Errors = validateStep(3); 
+
+    // We only strictly validate step 1 & 2 as per original code, but normally should validate all
     const finalErrors = { ...allErrors, ...step2Errors };
 
     if (Object.keys(finalErrors).length > 0) {
       setErrors(finalErrors);
-      setActiveStep(1);
+      // Find the first step with error to navigate there
+      if (Object.keys(allErrors).length > 0) setActiveStep(1);
+      else if (Object.keys(step2Errors).length > 0) setActiveStep(2);
       return;
     }
 
@@ -460,11 +538,15 @@ const AddEmployee = () => {
                       } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${theme.input.text} transition-all`}
                   >
                     <option value="" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Select Department</option>
-                    <option value="IT" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Information Technology</option>
-                    <option value="HR" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Human Resources</option>
-                    <option value="Finance" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Finance & Accounting</option>
-                    <option value="Marketing" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Marketing</option>
-                    <option value="Operations" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Operations</option>
+                    {departments.map((dept) => (
+                      <option
+                        key={dept.id}
+                        value={dept.name}
+                        className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}
+                      >
+                        {dept.name}
+                      </option>
+                    ))}
                   </select>
                   {errors.department && (
                     <p className="mt-1 text-sm text-rose-400">{errors.department}</p>
@@ -532,9 +614,15 @@ const AddEmployee = () => {
                     className={`w-full px-4 py-3 ${theme.input.bg} border ${theme.input.border} rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${theme.input.text} transition-all`}
                   >
                     <option value="" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Select Manager</option>
-                    <option value="1" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Rahul Sharma (IT Manager)</option>
-                    <option value="2" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Simran Kaur (HR Director)</option>
-                    <option value="3" className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}>Ankit Mehta (Finance Head)</option>
+                    {managers.map((manager) => (
+                      <option
+                        key={manager.id}
+                        value={manager.id}
+                        className={darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}
+                      >
+                        {manager.fullName} ({manager.designation || 'Manager'})
+                      </option>
+                    ))}
                   </select>
                 </div>
 

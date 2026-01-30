@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { FiArrowLeft, FiSave, FiCheck, FiUser, FiTrash2, FiShield, FiEye, FiEdit, FiClock, FiCalendar } from "react-icons/fi";
 import { Link, useParams } from "react-router-dom";
 import { useTheme, getThemeClasses } from "../../../contexts/ThemeContext";
+import roleService from "../../../services/roleService";
+import { toast } from "react-hot-toast";
 
 const EditRole = () => {
   const { id } = useParams();
@@ -11,25 +13,28 @@ const EditRole = () => {
   const themeClasses = getThemeClasses(darkMode);
 
   const [formData, setFormData] = useState({
-    name: "HR Manager",
-    description: "Manages employee data, leaves, and basic HR operations",
-    permissions: {
-      employeeView: true,
-      employeeEdit: true,
-      attendanceView: true,
-      attendanceEdit: false,
-      leaveView: true,
-      leaveApprove: true,
-      payrollView: false,
-      reportsView: true,
-      settingsEdit: false,
-    }
+    name: "",
+    description: "",
+    permissions: {}
   });
 
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    console.log("Fetching role data for ID:", id);
+    const fetchRole = async () => {
+      try {
+        const data = await roleService.getRoleById(id);
+        setFormData({
+          name: data.name,
+          description: data.description || "",
+          permissions: data.permissions || {}
+        });
+      } catch (error) {
+        console.error("Error fetching role:", error);
+        toast.error("Failed to fetch role details");
+      }
+    };
+    if (id) fetchRole();
   }, [id]);
 
   const handleChange = (e) => {
@@ -58,18 +63,22 @@ const EditRole = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
-      setTimeout(() => {
-        console.log("Updated role data:", formData);
-        setIsSubmitting(false);
+      try {
+        await roleService.updateRole(id, formData);
+        toast.success("Role updated successfully!");
         setHasChanges(false);
-        alert("Role updated successfully!");
-      }, 1500);
+      } catch (error) {
+        console.error("Error updating role:", error);
+        toast.error(error.response?.data?.message || "Failed to update role");
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       setErrors(validationErrors);
     }
@@ -281,8 +290,8 @@ const EditRole = () => {
                         <label
                           key={permIndex}
                           className={`flex items-center gap-3 p-3 rounded-lg border ${formData.permissions[permission.key]
-                              ? `border-purple-500/30 bg-purple-500/10`
-                              : `${themeClasses.border.primary} hover:${darkMode ? 'bg-gray-700/50' : 'bg-gray-300/50'}`
+                            ? `border-purple-500/30 bg-purple-500/10`
+                            : `${themeClasses.border.primary} hover:${darkMode ? 'bg-gray-700/50' : 'bg-gray-300/50'}`
                             } cursor-pointer transition-colors`}
                         >
                           <div className="relative">
@@ -293,8 +302,8 @@ const EditRole = () => {
                               className="sr-only"
                             />
                             <div className={`w-5 h-5 border rounded flex items-center justify-center ${formData.permissions[permission.key]
-                                ? "bg-gradient-to-r from-purple-500 to-purple-700 border-purple-500"
-                                : themeClasses.border.primary
+                              ? "bg-gradient-to-r from-purple-500 to-purple-700 border-purple-500"
+                              : themeClasses.border.primary
                               }`}>
                               {formData.permissions[permission.key] && (
                                 <FiCheck className="w-3 h-3 text-white" />

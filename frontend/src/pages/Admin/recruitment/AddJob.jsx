@@ -1,8 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { FiArrowLeft, FiSave, FiBriefcase, FiUsers, FiDollarSign, FiMapPin, FiCalendar } from "react-icons/fi";
 import { Link } from "react-router-dom";
 
+import { toast } from "react-hot-toast";
+import jobService from "../../../services/jobService";
+import { useNavigate } from "react-router-dom";
+
 const AddJob = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: "",
     department: "",
@@ -46,24 +52,46 @@ const AddJob = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
-    
+
     if (Object.keys(validationErrors).length === 0) {
-      setIsSubmitting(true);
-      setTimeout(() => {
-        console.log("Job data to save:", formData);
+      try {
+        setIsSubmitting(true);
+        await jobService.createJob(formData);
+        toast.success("Job posting created successfully!");
+        navigate("/admin/recruitment/jobs");
+      } catch (error) {
+        console.error("Error creating job:", error);
+        toast.error("Failed to create job posting");
+      } finally {
         setIsSubmitting(false);
-        alert("Job posting created successfully!");
-      }, 1500);
+      }
     } else {
       setErrors(validationErrors);
     }
   };
 
-  const departments = ["IT", "HR", "Finance", "Marketing", "Operations", "Sales"];
-  const jobTypes = ["Full-time", "Part-time", "Contract", "Internship", "Remote"];
+  /* Removed hardcoded departments */
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("/api/departments", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setDepartments(res.data.map(d => d.name)); // Assuming we just want names for the dropdown
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+      }
+    };
+    fetchDepartments();
+  }, []);
+
+  const jobTypes = ["Full-time", "Part-time", "Contract", "Intern"];
   const experienceOptions = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10+"];
 
   return (
@@ -73,7 +101,7 @@ const AddJob = () => {
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
-        
+
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-4">
             <Link
@@ -96,97 +124,89 @@ const AddJob = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Job Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information Card */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold text-white mb-4">Basic Information</h3>
-              
+        <div className="lg:col-span-2 space-y-8">
+
+          {/* ===================== BASIC INFORMATION ===================== */}
+          <div className="relative">
+            <div className="relative bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
+              <h3 className="text-lg font-semibold text-white mb-6 border-b border-slate-700 pb-3">
+                Basic Information
+              </h3>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Job Title */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <span className="flex items-center gap-2">
-                      <FiBriefcase className="w-4 h-4 text-cyan-400" />
-                      Job Title *
-                    </span>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Job Title <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
                     name="title"
                     value={formData.title}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-slate-800/50 border ${
-                      errors.title ? "border-rose-500" : "border-white/20"
-                    } rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all`}
-                    placeholder="e.g., Senior Frontend Developer"
+                    placeholder="e.g. Backend Developer"
+                    className={`w-full h-11 px-4 bg-slate-800 border ${errors.title ? "border-rose-500" : "border-slate-700"
+                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white`}
                   />
-                  {errors.title && (
-                    <p className="mt-1 text-sm text-rose-400">{errors.title}</p>
-                  )}
+                  {errors.title && <p className="mt-1 text-xs text-rose-400">{errors.title}</p>}
                 </div>
 
+                {/* Department */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Department *
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Department <span className="text-rose-400">*</span>
                   </label>
                   <select
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-slate-800/50 border ${
-                      errors.department ? "border-rose-500" : "border-white/20"
-                    } rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white transition-all`}
+                    className={`w-full h-11 px-4 bg-slate-800 border ${errors.department ? "border-rose-500" : "border-slate-700"
+                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white`}
                   >
-                    <option value="" className="bg-slate-800">Select Department</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept} className="bg-slate-800">{dept}</option>
+                    <option value="">Select Department</option>
+                    {departments.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
-                  {errors.department && (
-                    <p className="mt-1 text-sm text-rose-400">{errors.department}</p>
-                  )}
                 </div>
 
+                {/* Job Type */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Job Type
                   </label>
                   <select
                     name="jobType"
                     value={formData.jobType}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white transition-all"
+                    className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white"
                   >
-                    {jobTypes.map(type => (
-                      <option key={type} value={type} className="bg-slate-800">{type}</option>
+                    {jobTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
                 </div>
 
+                {/* Location */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <span className="flex items-center gap-2">
-                      <FiMapPin className="w-4 h-4 text-cyan-400" />
-                      Location
-                    </span>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Location
                   </label>
                   <input
                     type="text"
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all"
-                    placeholder="e.g., Mumbai, Remote"
+                    placeholder="Mumbai / Remote"
+                    className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white"
                   />
                 </div>
 
+                {/* Salary */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <span className="flex items-center gap-2">
-                      <FiDollarSign className="w-4 h-4 text-cyan-400" />
-                      Salary Range
-                    </span>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Salary Range
                   </label>
                   <div className="flex gap-3">
                     <input
@@ -194,24 +214,26 @@ const AddJob = () => {
                       name="salaryRangeMin"
                       value={formData.salaryRangeMin}
                       onChange={handleChange}
-                      className="flex-1 px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all"
                       placeholder="Min"
+                      defaultValue={0}
+                      className="flex-1 h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
                     />
-                    <span className="self-center text-slate-400">-</span>
                     <input
                       type="number"
                       name="salaryRangeMax"
                       value={formData.salaryRangeMax}
                       onChange={handleChange}
-                      className="flex-1 px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all"
                       placeholder="Max"
+                      defaultValue={0}
+                      className="flex-1 h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
                     />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Leave empty for negotiable</p>
+                  <p className="text-xs text-slate-400 mt-1">Leave empty if negotiable</p>
                 </div>
 
+                {/* Experience */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Experience (Years)
                   </label>
                   <div className="flex gap-3">
@@ -219,139 +241,111 @@ const AddJob = () => {
                       name="experienceMin"
                       value={formData.experienceMin}
                       onChange={handleChange}
-                      className="flex-1 px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white"
+                      className="flex-1 h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white"
                     >
-                      <option value="" className="bg-slate-800">Min</option>
-                      {experienceOptions.map(exp => (
-                        <option key={exp} value={exp} className="bg-slate-800">{exp}</option>
+                      <option value="">Min</option>
+                      {experienceOptions.map((exp) => (
+                        <option key={exp} value={exp}>{exp}</option>
                       ))}
                     </select>
-                    <span className="self-center text-slate-400">to</span>
                     <select
                       name="experienceMax"
                       value={formData.experienceMax}
                       onChange={handleChange}
-                      className="flex-1 px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white"
+                      className="flex-1 h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white"
                     >
-                      <option value="" className="bg-slate-800">Max</option>
-                      {experienceOptions.map(exp => (
-                        <option key={exp} value={exp} className="bg-slate-800">{exp}</option>
+                      <option value="">Max</option>
+                      {experienceOptions.map((exp) => (
+                        <option key={exp} value={exp}>{exp}</option>
                       ))}
                     </select>
                   </div>
                 </div>
 
+                {/* Deadline */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <span className="flex items-center gap-2">
-                      <FiCalendar className="w-4 h-4 text-cyan-400" />
-                      Application Deadline *
-                    </span>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Application Deadline <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="date"
                     name="deadline"
                     value={formData.deadline}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-slate-800/50 border ${
-                      errors.deadline ? "border-rose-500" : "border-white/20"
-                    } rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white transition-all`}
+                    className={`w-full h-11 px-4 bg-slate-800 border ${errors.deadline ? "border-rose-500" : "border-slate-700"
+                      } rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30`}
                   />
-                  {errors.deadline && (
-                    <p className="mt-1 text-sm text-rose-400">{errors.deadline}</p>
-                  )}
                 </div>
 
+                {/* Openings */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    <span className="flex items-center gap-2">
-                      <FiUsers className="w-4 h-4 text-cyan-400" />
-                      Number of Openings
-                    </span>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Number of Openings
                   </label>
                   <input
                     type="number"
                     name="openings"
                     value={formData.openings}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all"
                     min="1"
+                    className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
+
               </div>
             </div>
           </div>
 
-          {/* Job Description Card */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold text-white mb-4">Job Description *</h3>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleTextAreaChange("description", e.target.value)}
-                rows="4"
-                className={`w-full px-4 py-3 bg-slate-800/50 border ${
-                  errors.description ? "border-rose-500" : "border-white/20"
-                } rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all`}
-                placeholder="Describe the job role, company culture, and benefits..."
-              />
-              {errors.description && (
-                <p className="mt-1 text-sm text-rose-400">{errors.description}</p>
-              )}
-            </div>
+          {/* ===================== DESCRIPTION ===================== */}
+          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
+            <h3 className="text-lg font-semibold text-white mb-4">Job Description *</h3>
+            <textarea
+              rows={5}
+              value={formData.description}
+              onChange={(e) => handleTextAreaChange("description", e.target.value)}
+              placeholder="Describe the role, team, and benefits..."
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
+            />
           </div>
 
-          {/* Requirements Card */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold text-white mb-4">Requirements *</h3>
-              <textarea
-                value={formData.requirements}
-                onChange={(e) => handleTextAreaChange("requirements", e.target.value)}
-                rows="4"
-                className={`w-full px-4 py-3 bg-slate-800/50 border ${
-                  errors.requirements ? "border-rose-500" : "border-white/20"
-                } rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all`}
-                placeholder="List the required qualifications, experience, and skills..."
-              />
-              {errors.requirements && (
-                <p className="mt-1 text-sm text-rose-400">{errors.requirements}</p>
-              )}
-            </div>
+          {/* ===================== REQUIREMENTS ===================== */}
+          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
+            <h3 className="text-lg font-semibold text-white mb-4">Requirements *</h3>
+            <textarea
+              rows={5}
+              value={formData.requirements}
+              onChange={(e) => handleTextAreaChange("requirements", e.target.value)}
+              placeholder="Required qualifications, experience, tools..."
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
+            />
           </div>
 
-          {/* Responsibilities & Skills */}
+          {/* ===================== RESPONSIBILITIES & SKILLS ===================== */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-              <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-                <h3 className="text-xl font-bold text-white mb-4">Responsibilities</h3>
-                <textarea
-                  value={formData.responsibilities}
-                  onChange={(e) => handleTextAreaChange("responsibilities", e.target.value)}
-                  rows="4"
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all"
-                  placeholder="Key responsibilities and daily tasks..."
-                />
-              </div>
+            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
+              <h3 className="text-lg font-semibold text-white mb-4">Responsibilities</h3>
+              <textarea
+                rows={5}
+                value={formData.responsibilities}
+                onChange={(e) => handleTextAreaChange("responsibilities", e.target.value)}
+                placeholder="Key duties and responsibilities..."
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
+              />
             </div>
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-              <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-                <h3 className="text-xl font-bold text-white mb-4">Skills</h3>
-                <textarea
-                  value={formData.skills}
-                  onChange={(e) => handleTextAreaChange("skills", e.target.value)}
-                  rows="4"
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-slate-400 transition-all"
-                  placeholder="Technical and soft skills required (comma separated)..."
-                />
-              </div>
+
+            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
+              <h3 className="text-lg font-semibold text-white mb-4">Skills</h3>
+              <textarea
+                rows={5}
+                value={formData.skills}
+                onChange={(e) => handleTextAreaChange("skills", e.target.value)}
+                placeholder="e.g. Node.js, SQL, REST APIs, Problem Solving"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
+              />
             </div>
           </div>
         </div>
+
 
         {/* Right Column - Preview & Actions */}
         <div className="space-y-6">
@@ -409,7 +403,7 @@ const AddJob = () => {
             <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
             <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
               <h3 className="text-xl font-bold text-white mb-4">Status & Actions</h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
@@ -450,9 +444,8 @@ const AddJob = () => {
                     type="submit"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg shadow hover:shadow-md font-medium transition-all ${
-                      isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-                    }`}
+                    className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg shadow hover:shadow-md font-medium transition-all ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                      }`}
                   >
                     {isSubmitting ? (
                       <>
@@ -469,7 +462,7 @@ const AddJob = () => {
                       </>
                     )}
                   </button>
-                  
+
                   <Link
                     to="/admin/recruitment/jobs"
                     className="w-full mt-3 block px-4 py-3 border border-white/20 text-white text-center rounded-lg hover:bg-slate-800/50 font-medium"

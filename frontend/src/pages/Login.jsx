@@ -1,10 +1,10 @@
 import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { 
-  FiMail, 
-  FiLock, 
-  FiEye, 
+import {
+  FiMail,
+  FiLock,
+  FiEye,
   FiEyeOff,
   FiUsers,
   FiCalendar,
@@ -36,7 +36,7 @@ const Login = ({ setUser }) => {
         localStorage.setItem('employeeId', res.data.user.employee.id);
       }
       setUser(res.data.user);
-      
+
       // Redirect based on role
       const role = res.data.user?.role;
       if (role === "ADMIN") {
@@ -67,7 +67,7 @@ const Login = ({ setUser }) => {
 
     setIsLoading(true);
     try {
-      await axios.post("/api/users/forgot-password", {
+      await axios.post("/api/auth/forgot-password", {
         email: formData.email,
       });
       setInfo(`Password reset link sent to ${formData.email}. Check your inbox.`);
@@ -80,7 +80,7 @@ const Login = ({ setUser }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800">
-      
+
       {/* BACKGROUND ELEMENTS */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 opacity-20" style={{
@@ -92,7 +92,7 @@ const Login = ({ setUser }) => {
 
       {/* TWO COLUMN LAYOUT */}
       <div className="flex min-h-screen">
-        
+
         {/* LEFT PANEL - DESCRIPTION & FEATURES */}
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center p-12 relative">
           <div className="max-w-md mx-auto relative">
@@ -103,12 +103,12 @@ const Login = ({ setUser }) => {
               </div>
               <h1 className="text-3xl font-bold text-white">LiteHR</h1>
             </div>
-            
+
             {/* WELCOME MESSAGE */}
             <h2 className="text-4xl font-bold mb-6 leading-tight text-white">
               Welcome Back to <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-purple-300">LiteHR</span>
             </h2>
-            
+
             <p className="text-slate-300 text-lg mb-8 leading-relaxed">
               Streamline your HR processes with our intuitive platform. Manage attendance, leaves, and employee data effortlessly.
             </p>
@@ -142,16 +142,16 @@ const Login = ({ setUser }) => {
           <div className="relative w-full max-w-md animate-slideUp">
             {/* Glow effect */}
             <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/30 to-purple-500/30 rounded-3xl blur-xl opacity-30"></div>
-            
+
             <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-white/10">
-              
+
               {/* Header section */}
               <div className="p-8 text-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10"></div>
-                
+
                 <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
-                <div className="absolute bottom-4 left-4 w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{animationDelay: '0.5s'}}></div>
-                
+                <div className="absolute bottom-4 left-4 w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+
                 <div className="relative">
                   <h2 className="text-3xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-purple-300">
                     Sign In
@@ -167,7 +167,7 @@ const Login = ({ setUser }) => {
                     <p className="text-rose-300 text-sm">{error}</p>
                   </div>
                 )}
-                
+
                 {info && (
                   <div className="mb-6 p-4 bg-gradient-to-r from-emerald-900/20 to-green-900/20 rounded-xl border border-emerald-500/30">
                     <p className="text-emerald-300 text-sm">{info}</p>
@@ -251,7 +251,7 @@ const Login = ({ setUser }) => {
                     {/* Button content */}
                     <div className="relative bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 p-4">
 
-{isLoading ? (
+                      {isLoading ? (
                         <div className="flex items-center justify-center gap-2">
                           <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -265,17 +265,28 @@ const Login = ({ setUser }) => {
                     </div>
                   </button>
 
-                  {/* REGISTER LINK */}
-                  <div className="text-center pt-4">
-                    <p className="text-slate-400">
-                      Don't have an account?{" "}
-                      <Link
-                        to="/register"
-                        className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+                  {/* BACK TO HOME */}
+                  <div className="text-center pt-6">
+                    <Link
+                      to="/"
+                      className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
                       >
-                        Create Account
-                      </Link>
-                    </p>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                        />
+                      </svg>
+                      Back to Home
+                    </Link>
                   </div>
                 </form>
               </div>

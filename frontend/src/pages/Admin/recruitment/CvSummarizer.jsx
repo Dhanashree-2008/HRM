@@ -1,526 +1,349 @@
 import React, { useState } from "react";
-import AdminLayout from "../../../layouts/AdminLayout";
-import { FiArrowLeft, FiUpload, FiFileText, FiUser, FiBriefcase, FiAward, FiDownload, FiCopy, FiUsers, FiCheck, FiX } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { FiUpload, FiFileText, FiDownload, FiCopy, FiCheck, FiSearch, FiBriefcase } from "react-icons/fi";
 
-const CvSummarizer = () => {
-  const [file, setFile] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [summary, setSummary] = useState(null);
+const API_BASE_URL = "http://localhost:5000/api";
+
+const CvSummarize = () => {
+  const [resumePath, setResumePath] = useState("");
+  const [jobPosition, setJobPosition] = useState("Frontend Developer");
+  const [cvSummary, setCvSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        alert("File size must be less than 5MB");
-        return;
-      }
-      
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        alert("Only PDF and DOC files are allowed");
-        return;
-      }
-
-      setFile(selectedFile);
-      setSummary(null);
-    }
-  };
-
-  const handleProcess = () => {
-    if (!file) {
-      alert("Please upload a CV file first");
+  /* =============================== Handle Summarize =============================== */
+  const handleSummarize = async () => {
+    if (!resumePath) {
+      setError("Resume path is required");
       return;
     }
+    setLoading(true);
+    setError("");
+    setCvSummary(null);
 
-    setIsProcessing(true);
-    
-    setTimeout(() => {
-      setIsProcessing(false);
-      setSummary({
-        name: "Amit Verma",
-        email: "amit.verma@example.com",
-        phone: "+91 98765 43210",
-        experience: "3 years",
-        currentRole: "Frontend Developer",
-        currentCompany: "TechCorp Pvt Ltd",
-        education: "B.Tech Computer Science - IIT Mumbai (2020)",
-        skills: ["React", "JavaScript", "HTML/CSS", "TypeScript", "Redux", "Git"],
-        summary: "Frontend developer with 3+ years of experience building responsive web applications using React and modern JavaScript. Strong understanding of component-based architecture and state management. Experience working in agile teams and collaborating with UX designers.",
-        matchScore: 85,
-        strengths: ["Strong React skills", "Good problem-solving", "Clean code practices"],
-        recommendations: ["Schedule technical interview", "Assess JavaScript fundamentals"]
+    try {
+      const res = await fetch(`${API_BASE_URL}/cv/summarize/url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cvUrl: resumePath,
+          jobPosition,
+          applicationId: "APP-" + Date.now(),
+        }),
       });
-    }, 3000);
+
+      const data = await res.json();
+      if (data.success && data.summary) {
+        setCvSummary(data.summary);
+      } else {
+        setError(data.error || "Failed to summarize CV");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Server error while summarizing CV");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCopySummary = () => {
-    if (summary) {
-      const textToCopy = `
-Candidate: ${summary.name}
-Email: ${summary.email}
-Phone: ${summary.phone}
-Experience: ${summary.experience}
-Current Role: ${summary.currentRole} at ${summary.currentCompany}
-Education: ${summary.education}
+  /* =============================== Copy / Download =============================== */
+  const handleCopy = () => {
+    if (!cvSummary) return;
+    navigator.clipboard.writeText(cvSummary.summary || "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = () => {
+    if (!cvSummary) return;
+    const text = `
+Name: ${cvSummary.name}
+Email: ${cvSummary.email}
+Phone: ${cvSummary.phone}
+Experience: ${cvSummary.experience}
+Role: ${cvSummary.currentRole}
+Company: ${cvSummary.currentCompany}
+Education: ${cvSummary.education || "N/A"}
 
 Summary:
-${summary.summary}
+${cvSummary.summary}
 
-Skills: ${summary.skills.join(", ")}
+Skills: ${cvSummary.skills.join(", ")}
 
 Strengths:
-${summary.strengths.map(s => `• ${s}`).join("\n")}
+${cvSummary.strengths.join("\n")}
 
-Recommendations:
-${summary.recommendations.map(r => `• ${r}`).join("\n")}
+Match Score: ${cvSummary.matchScore}%
+    `.trim();
 
-Match Score: ${summary.matchScore}%
-      `.trim();
-
-      navigator.clipboard.writeText(textToCopy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${cvSummary.name || "Candidate"}_CV_Summary.txt`;
+    a.click();
   };
 
-  const handleDownloadSummary = () => {
-    if (summary) {
-      const element = document.createElement("a");
-      const text = `
-Candidate Summary Report
-========================
-
-Basic Information:
------------------
-Name: ${summary.name}
-Email: ${summary.email}
-Phone: ${summary.phone}
-Experience: ${summary.experience}
-Current Role: ${summary.currentRole}
-Current Company: ${summary.currentCompany}
-Education: ${summary.education}
-
-Professional Summary:
---------------------
-${summary.summary}
-
-Technical Skills:
-----------------
-${summary.skills.map(s => `• ${s}`).join("\n")}
-
-Key Strengths:
---------------
-${summary.strengths.map(s => `• ${s}`).join("\n")}
-
-Recommendations:
----------------
-${summary.recommendations.map(r => `• ${r}`).join("\n")}
-
-Overall Assessment:
-------------------
-Match Score: ${summary.matchScore}%
-Status: Recommended for technical interview
-Generated: ${new Date().toLocaleDateString()}
-      `.trim();
-
-      const blob = new Blob([text], { type: 'text/plain' });
-      element.href = URL.createObjectURL(blob);
-      element.download = `${summary.name.replace(/\s+/g, '_')}_Summary.txt`;
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-    }
-  };
-
-  const clearAll = () => {
-    setFile(null);
-    setSummary(null);
-  };
-
+  /* =============================== RENDER =============================== */
   return (
-    <AdminLayout>
-      {/*  Header */}
-      <div className="relative mb-10 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 p-8">
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-4">
-            <Link
-              to="/admin/recruitment"
-              className="p-2 rounded-lg hover:bg-white/10 text-white"
-            >
-              <FiArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-purple-300">
-                AI CV Summarizer
-              </h1>
-              <p className="text-slate-300">Upload CVs to get instant AI-powered candidate summaries.</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* HEADER */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-3 bg-blue-600 rounded-xl">
+              <FiFileText className="text-3xl text-white" />
             </div>
+            <h1 className="text-4xl font-bold text-white">AI CV Summarizer</h1>
           </div>
+          <p className="text-slate-400 text-lg">
+            Analyze resumes instantly with AI-powered insights
+          </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Upload & Processing */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Upload Card with  Theme */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold text-white mb-4">Upload CV</h3>
-              
-              {!file ? (
-                <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
-                    <FiUpload className="w-8 h-8 text-white" />
-                  </div>
-                  <h4 className="text-lg font-medium text-white mb-2">Upload CV Document</h4>
-                  <p className="text-slate-300 mb-4">
-                    Drag and drop your CV file here or click to browse
-                  </p>
-                  <label className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg shadow hover:shadow-md cursor-pointer">
-                    <FiUpload className="w-5 h-5" />
-                    Browse Files
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept=".pdf,.doc,.docx"
-                    />
-                  </label>
-                  <p className="text-sm text-slate-400 mt-4">
-                    Supported formats: PDF, DOC, DOCX (Max 5MB)
-                  </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT: INPUT SECTION */}
+          <div className="space-y-6">
+            {/* INPUT CARD */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+              <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                <FiUpload className="text-blue-500" />
+                Upload Resume
+              </h2>
+
+              {/* Resume Path Input */}
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Resume Path (from Database)
+                </label>
+                <div className="relative">
+                  <FiFileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="e.g., /resumes/john-doe-resume.pdf"
+                    value={resumePath}
+                    onChange={(e) => setResumePath(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-900/50 text-white rounded-xl border border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                  />
                 </div>
-              ) : (
-                <div className="border border-white/20 rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
-                        <FiFileText className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{file.name}</p>
-                        <p className="text-sm text-slate-400">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={clearAll}
-                      className="px-4 py-2 border border-white/20 text-slate-300 rounded-lg hover:bg-white/10"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  
-                  <button
-                    onClick={handleProcess}
-                    disabled={isProcessing}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium ${
-                      isProcessing
-                        ? "bg-slate-800/50 text-slate-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow hover:shadow-md"
-                    }`}
+              </div>
+
+              {/* Job Position Select */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Job Position
+                </label>
+                <div className="relative">
+                  <FiBriefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" />
+                  <select
+                    value={jobPosition}
+                    onChange={(e) => setJobPosition(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-900/50 text-white rounded-xl border border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all appearance-none cursor-pointer"
                   >
-                    {isProcessing ? (
-                      <>
-                        <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Processing CV with AI...
-                      </>
-                    ) : (
-                      <>
-                        <FiFileText className="w-5 h-5" />
-                        Generate AI Summary
-                      </>
-                    )}
-                  </button>
+                    <option>Frontend Developer</option>
+                    <option>Backend Developer</option>
+                    <option>Full Stack Developer</option>
+                    <option>DevOps Engineer</option>
+                    <option>Data Scientist</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={handleSummarize}
+                disabled={loading || !resumePath}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-700 disabled:to-slate-700 text-white font-semibold py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/25 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Analyzing Resume...
+                  </>
+                ) : (
+                  <>
+                    <FiSearch />
+                    Summarize CV
+                  </>
+                )}
+              </button>
+
+              {/* Error Message */}
+              {error && (
+                <div className="mt-4 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm flex items-start gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span>{error}</span>
                 </div>
               )}
             </div>
+
+            {/* INFO CARD */}
+            <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-2xl p-6 border border-blue-700/30">
+              <h3 className="text-lg font-semibold text-white mb-3">How it works</h3>
+              <ul className="space-y-2 text-slate-300 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-400 mt-0.5">•</span>
+                  <span>Enter the resume path from your database</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-400 mt-0.5">•</span>
+                  <span>Select the target job position</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-400 mt-0.5">•</span>
+                  <span>Get AI-powered analysis and match score</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          {/* Results Card with  Theme */}
-          {summary && (
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-              <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-white">AI Summary</h3>
+          {/* RIGHT: RESULTS SECTION */}
+          <div>
+            {cvSummary && typeof cvSummary === "object" ? (
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl space-y-6">
+                {/* Header with Actions */}
+                <div className="flex items-start justify-between pb-4 border-b border-slate-700">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-1">
+                      {cvSummary.name || "Candidate Profile"}
+                    </h2>
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-400">
+                      {cvSummary.email && (
+                        <span className="flex items-center gap-1">
+                          📧 {cvSummary.email}
+                        </span>
+                      )}
+                      {cvSummary.phone && (
+                        <span className="flex items-center gap-1">
+                          📱 {cvSummary.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={handleCopySummary}
-                      className="flex items-center gap-2 px-3 py-2 border border-white/20 text-slate-300 rounded-lg hover:bg-white/10"
+                      onClick={handleCopy}
+                      className="p-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all duration-200 flex items-center gap-2"
+                      title="Copy summary"
                     >
-                      <FiCopy className="w-4 h-4" />
-                      {copied ? "Copied!" : "Copy"}
+                      {copied ? <FiCheck className="text-green-400" /> : <FiCopy />}
                     </button>
                     <button
-                      onClick={handleDownloadSummary}
-                      className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:shadow-md"
+                      onClick={handleDownload}
+                      className="p-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all duration-200"
+                      title="Download as text"
                     >
-                      <FiDownload className="w-4 h-4" />
-                      Download
+                      <FiDownload />
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-800/50 backdrop-blur-sm rounded-lg border border-white/10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FiUser className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm text-slate-400">Candidate</span>
-                      </div>
-                      <p className="font-medium text-white">{summary.name}</p>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 backdrop-blur-sm rounded-lg border border-white/10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FiBriefcase className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm text-slate-400">Experience</span>
-                      </div>
-                      <p className="font-medium text-white">{summary.experience}</p>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 backdrop-blur-sm rounded-lg border border-white/10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FiBriefcase className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm text-slate-400">Current Role</span>
-                      </div>
-                      <p className="font-medium text-white">{summary.currentRole}</p>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 backdrop-blur-sm rounded-lg border border-white/10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FiAward className="w-4 h-4 text-emerald-400" />
-                        <span className="text-sm text-slate-400">Match Score</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-slate-700 rounded-full h-2">
-                          <div 
-                            className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full"
-                            style={{ width: `${summary.matchScore}%` }}
-                          ></div>
-                        </div>
-                        <span className="font-bold text-emerald-400">{summary.matchScore}%</span>
-                      </div>
-                    </div>
+                {/* Current Role */}
+                {(cvSummary.currentRole || cvSummary.currentCompany) && (
+                  <div className="bg-slate-900/50 rounded-xl p-4">
+                    <p className="text-sm text-slate-400 mb-1">Current Position</p>
+                    <p className="text-white font-medium">
+                      {cvSummary.currentRole}
+                      {cvSummary.currentCompany && (
+                        <span className="text-slate-400"> at {cvSummary.currentCompany}</span>
+                      )}
+                    </p>
+                    {cvSummary.experience && (
+                      <p className="text-sm text-slate-400 mt-1">
+                        Experience: {cvSummary.experience}
+                      </p>
+                    )}
                   </div>
+                )}
 
-                  {/* Summary Text */}
-                  <div>
-                    <h4 className="font-medium text-white mb-2">Professional Summary</h4>
-                    <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg">
-                      <p className="text-slate-300">{summary.summary}</p>
-                    </div>
+                {/* Education */}
+                {cvSummary.education && (
+                  <div className="bg-slate-900/50 rounded-xl p-4">
+                    <p className="text-sm text-slate-400 mb-1">Education</p>
+                    <p className="text-white font-medium">{cvSummary.education}</p>
                   </div>
+                )}
 
-                  {/* Skills */}
+                {/* Summary */}
+                {cvSummary.summary && (
                   <div>
-                    <h4 className="font-medium text-white mb-2">Skills</h4>
+                    <h3 className="text-lg font-semibold text-white mb-3">Summary</h3>
+                    <p className="text-slate-300 leading-relaxed bg-slate-900/30 rounded-xl p-4">
+                      {cvSummary.summary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Skills */}
+                {Array.isArray(cvSummary.skills) && cvSummary.skills.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Skills</h3>
                     <div className="flex flex-wrap gap-2">
-                      {summary.skills.map((skill, index) => (
-                        <span key={index} className="px-3 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 rounded-lg text-sm border border-cyan-500/30">
+                      {cvSummary.skills.map((skill, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-1.5 bg-blue-600/20 text-blue-300 rounded-lg text-sm font-medium border border-blue-500/30"
+                        >
                           {skill}
                         </span>
                       ))}
                     </div>
                   </div>
+                )}
 
-                  {/* Strengths & Recommendations */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-medium text-white mb-2">Strengths</h4>
-                      <div className="space-y-2">
-                        {summary.strengths.map((strength, index) => (
-                          <div key={index} className="flex items-start gap-2 p-2 bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded border border-emerald-500/20">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5"></div>
-                            <span className="text-sm text-slate-300">{strength}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-white mb-2">Recommendations</h4>
-                      <div className="space-y-2">
-                        {summary.recommendations.map((recommendation, index) => (
-                          <div key={index} className="flex items-start gap-2 p-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded border border-amber-500/20">
-                            <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5"></div>
-                            <span className="text-sm text-slate-300">{recommendation}</span>
-                          </div>
-                        ))}
-                      </div>
+                {/* Strengths */}
+                {Array.isArray(cvSummary.strengths) && cvSummary.strengths.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Key Strengths</h3>
+                    <div className="space-y-2">
+                      {cvSummary.strengths.map((strength, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-3 bg-slate-900/30 rounded-lg p-3"
+                        >
+                          <span className="text-green-400 text-lg mt-0.5">✓</span>
+                          <span className="text-slate-300 flex-1">{strength}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  {/* Contact Info */}
-                  <div className="p-4 bg-slate-800/50 backdrop-blur-sm rounded-lg border border-white/10">
-                    <h4 className="font-medium text-white mb-2">Contact Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-sm text-slate-400">Email</p>
-                        <p className="font-medium text-white">{summary.email}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-400">Phone</p>
-                        <p className="font-medium text-white">{summary.phone}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-400">Current Company</p>
-                        <p className="font-medium text-white">{summary.currentCompany}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-400">Education</p>
-                        <p className="font-medium text-white">{summary.education}</p>
-                      </div>
+                {/* Match Score */}
+                {cvSummary.matchScore !== undefined && (
+                  <div className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 rounded-xl p-5 border border-green-700/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-semibold">Match Score</span>
+                      <span className="text-3xl font-bold text-green-400">
+                        {cvSummary.matchScore}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-green-500 to-emerald-400 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${cvSummary.matchScore}%` }}
+                      />
                     </div>
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - Instructions & History with  Theme */}
-        <div className="space-y-6">
-          {/* Instructions Card */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold text-white mb-4">How It Works</h3>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                    1
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">Upload CV</p>
-                    <p className="text-sm text-slate-400">Upload PDF or DOC file</p>
-                  </div>
+            ) : (
+              <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-12 border border-slate-700/50 border-dashed flex flex-col items-center justify-center text-center h-full min-h-[500px]">
+                <div className="p-6 bg-slate-700/30 rounded-full mb-4">
+                  <FiFileText className="text-6xl text-slate-500" />
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                    2
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">AI Processing</p>
-                    <p className="text-sm text-slate-400">AI analyzes content</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center text-white font-bold">
-                    3
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">Get Summary</p>
-                    <p className="text-sm text-slate-400">Receive detailed analysis</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-bold">
-                    4
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">Take Action</p>
-                    <p className="text-sm text-slate-400">Copy, download, or share</p>
-                  </div>
-                </div>
+                <h3 className="text-xl font-semibold text-slate-400 mb-2">
+                  No Results Yet
+                </h3>
+                <p className="text-slate-500">
+                  Enter a resume path and click "Summarize CV" to see AI-powered analysis
+                </p>
               </div>
-            </div>
-          </div>
-
-          {/* Benefits Card */}
-          <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-2xl p-6">
-            <h4 className="font-medium text-white mb-3">Benefits</h4>
-            <ul className="text-sm text-slate-300 space-y-2">
-              <li className="flex items-start gap-2">
-                <FiCheck className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                <span>Save 90% screening time</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <FiCheck className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                <span>Unbiased candidate evaluation</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <FiCheck className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                <span>Consistent scoring methodology</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <FiCheck className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                <span>Integration with ATS systems</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Recent Summaries */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-white/10">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Recent Summaries</h3>
-                <button className="text-sm text-cyan-400 hover:text-cyan-300">View All</button>
-              </div>
-              
-              <div className="space-y-3">
-                {[
-                  { name: "Neha Singh", role: "HR Executive", score: 72, date: "Today" },
-                  { name: "Rajesh Kumar", role: "Accountant", score: 90, date: "Yesterday" },
-                  { name: "Sneha Patel", role: "DevOps Engineer", score: 65, date: "2 days ago" },
-                ].map((item, index) => (
-                  <div key={index} className="p-3 rounded-lg border border-white/10 hover:border-cyan-500/30 bg-slate-800/50 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-white">{item.name}</p>
-                        <p className="text-sm text-slate-400">{item.role}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-lg font-bold ${
-                          item.score >= 80 ? "text-emerald-400" :
-                          item.score >= 60 ? "text-amber-400" :
-                          "text-rose-400"
-                        }`}>{item.score}%</div>
-                        <p className="text-xs text-slate-500">{item.date}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Tips */}
-          <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-2xl p-6">
-            <h4 className="font-medium text-white mb-3">Tips for Best Results</h4>
-            <ul className="text-sm text-slate-300 space-y-2">
-              <li className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1"></div>
-                <span>Use clear, readable CV formats</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1"></div>
-                <span>Ensure text is selectable (not scanned images)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1"></div>
-                <span>Include detailed work experience</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1"></div>
-                <span>Verify contact information accuracy</span>
-              </li>
-            </ul>
+            )}
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </div>
   );
 };
 
-export default CvSummarizer;
+export default CvSummarize;

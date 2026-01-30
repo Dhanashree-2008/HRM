@@ -1,5 +1,6 @@
 import { ThemeWrapper } from '../contexts/ThemeContext';
 import React, { useState, useEffect } from "react";
+import Chatbot from "../components/Chatbot";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom"; // Added useNavigate
 import {
   FiHome,
@@ -29,7 +30,7 @@ import { IoMdNotificationsOutline } from "react-icons/io";
 import { HiOutlineOfficeBuilding } from "react-icons/hi";
 import { AiOutlineAudit } from "react-icons/ai";
 
-const AdminLayout = ({ children }) => {
+const AdminLayout = ({ children, logout }) => {
   const location = useLocation();
   const navigate = useNavigate(); // Added useNavigate
   const [userDropdown, setUserDropdown] = useState(false);
@@ -106,7 +107,11 @@ const AdminLayout = ({ children }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    if (logout) {
+      logout();
+    } else {
+      localStorage.removeItem("token");
+    }
     navigate("/login");
   };
 
@@ -207,15 +212,59 @@ const AdminLayout = ({ children }) => {
       ]
     },
 
+    // Payroll Module
+    {
+      label: "Payroll",
+      icon: <FiFileText />,
+      path: "/admin/payroll",
+      subItems: [
+        { label: "Payslips", path: "/admin/payroll/payslips" },
+      ]
+    },
+
     // Settings Module
     { label: "Settings", icon: <FiSettings />, path: "/admin/settings" },
   ];
 
-  const notifications = [
-    { id: 1, text: "New leave request from Rahul Sharma", time: "2 min ago", unread: true },
-    { id: 2, text: "Performance review scheduled", time: "1 hour ago", unread: true },
-    { id: 3, text: "System maintenance tonight", time: "3 hours ago", unread: false },
-  ];
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const res = await fetch("/api/notifications", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.slice(0, 5).map(n => {
+            const diff = Date.now() - new Date(n.createdAt).getTime();
+            const mins = Math.floor(diff / 60000);
+            let timeStr = "Just now";
+            if (mins > 0 && mins < 60) timeStr = `${mins} min ago`;
+            else if (mins >= 60 && mins < 1440) timeStr = `${Math.floor(mins / 60)} hr ago`;
+            else if (mins >= 1440) timeStr = `${Math.floor(mins / 1440)} day ago`;
+
+            return {
+              id: n.id,
+              text: n.message || n.title,
+              time: timeStr,
+              unread: !n.isRead
+            };
+          });
+          setNotifications(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notifications", err);
+      }
+    };
+
+    fetchNotifications();
+    // Poll every 30 seconds to keep updated
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [location.pathname]); // Update when navigating too
 
   // Helper function to check if a path is active
   const isActivePath = (itemPath, currentPath) => {
@@ -383,8 +432,8 @@ const AdminLayout = ({ children }) => {
                               >
                                 <div
                                   className={`w-1.5 h-1.5 rounded-full ${isSubActive
-                                      ? (darkMode ? "bg-purple-500" : "bg-purple-600")
-                                      : (darkMode ? "bg-gray-500" : "bg-gray-400")
+                                    ? (darkMode ? "bg-purple-500" : "bg-purple-600")
+                                    : (darkMode ? "bg-gray-500" : "bg-gray-400")
                                     }`}
                                 />
                                 <span>{subItem.label}</span>
@@ -574,10 +623,14 @@ const AdminLayout = ({ children }) => {
                       {user?.email || "admin@hr.com"}
                     </p>
                   </div>
-                  <button className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-50'} transition-colors`}>
-                    <FiUser className="inline mr-2" /> Profile
-                  </button>
-                  <button className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-50'} transition-colors`}>
+
+                  <button
+                    onClick={() => {
+                      navigate('/admin/settings');
+                      setUserDropdown(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-50'} transition-colors`}
+                  >
                     <FiSettings className="inline mr-2" /> Settings
                   </button>
                   <div className={`border-t ${sidebarBorder} mt-2 pt-2`}>
@@ -602,6 +655,7 @@ const AdminLayout = ({ children }) => {
           </div>
         </main>
       </div>
+      <Chatbot />
     </div>
   );
 };

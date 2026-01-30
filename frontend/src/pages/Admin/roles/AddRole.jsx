@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { FiArrowLeft, FiSave, FiCheck, FiUser, FiShield, FiPlus, FiEye, FiEdit } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import { useTheme, getThemeClasses } from "../../../contexts/ThemeContext";
+import roleService from "../../../services/roleService";
+import { toast } from "react-hot-toast";
 
 const AddRole = () => {
     const [formData, setFormData] = useState({
@@ -49,17 +51,37 @@ const AddRole = () => {
         return newErrors;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const validationErrors = validateForm();
 
         if (Object.keys(validationErrors).length === 0) {
             setIsSubmitting(true);
-            setTimeout(() => {
-                console.log("Role data to save:", formData);
+            try {
+                await roleService.createRole(formData);
+                toast.success("Role created successfully!");
+                // Optionally navigate back or reset form
+                setFormData({
+                    name: "",
+                    description: "",
+                    permissions: {
+                        employeeView: false,
+                        employeeEdit: false,
+                        attendanceView: false,
+                        attendanceEdit: false,
+                        leaveView: false,
+                        leaveApprove: false,
+                        payrollView: false,
+                        reportsView: false,
+                        settingsEdit: false,
+                    }
+                });
+            } catch (error) {
+                console.error("Error creating role:", error);
+                toast.error(error.response?.data?.message || "Failed to create role");
+            } finally {
                 setIsSubmitting(false);
-                alert("Role created successfully!");
-            }, 1500);
+            }
         } else {
             setErrors(validationErrors);
         }
@@ -242,8 +264,8 @@ const AddRole = () => {
                                                 <label
                                                     key={permIndex}
                                                     className={`flex items-center gap-3 p-3 rounded-lg border ${formData.permissions[permission.key]
-                                                            ? `border-purple-500/30 bg-purple-500/10`
-                                                            : `${themeClasses.border.primary} hover:${darkMode ? 'bg-gray-700/50' : 'bg-gray-300/50'}`
+                                                        ? `border-purple-500/30 bg-purple-500/10`
+                                                        : `${themeClasses.border.primary} hover:${darkMode ? 'bg-gray-700/50' : 'bg-gray-300/50'}`
                                                         } cursor-pointer transition-colors`}
                                                 >
                                                     <div className="relative">
@@ -254,8 +276,8 @@ const AddRole = () => {
                                                             className="sr-only"
                                                         />
                                                         <div className={`w-5 h-5 border rounded flex items-center justify-center ${formData.permissions[permission.key]
-                                                                ? "bg-gradient-to-r from-purple-500 to-purple-700 border-purple-500"
-                                                                : themeClasses.border.primary
+                                                            ? "bg-gradient-to-r from-purple-500 to-purple-700 border-purple-500"
+                                                            : themeClasses.border.primary
                                                             }`}>
                                                             {formData.permissions[permission.key] && (
                                                                 <FiCheck className="w-3 h-3 text-white" />

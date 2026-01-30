@@ -19,12 +19,17 @@ const EmployeeProfile = () => {
       return null;
     }
   };
-  
+
   const darkMode = useTheme() || false;
   const theme = useThemeClasses();
 
   const [employee, setEmployee] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null); // show friendly error messages in UI
+  const [leaveBalances, setLeaveBalances] = useState(null);
+  const [attendanceStats, setAttendanceStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
 
   // Load current user / employee profile
   useEffect(() => {
@@ -87,7 +92,7 @@ const EmployeeProfile = () => {
             headers: { Authorization: `Bearer ${token}` },
           });
 
-            if (!empRes.ok) {
+          if (!empRes.ok) {
             // Read body (try JSON then text) for better diagnostics
             let bodyText;
             try {
@@ -224,32 +229,148 @@ const EmployeeProfile = () => {
     loadProfile();
   }, [routeId]);
 
-  const leaveBalances = {
-    earned: { total: 20, used: 12, remaining: 8 },
-    sick: { total: 10, used: 6, remaining: 4 },
-    casual: { total: 15, used: 12, remaining: 3 },
-  };
+  // Fetch leave balances and attendance stats
+  useEffect(() => {
+    const fetchStatsData = async () => {
+      if (!employee?.id) return;
 
-  const attendanceStats = {
-    present: 22,
-    absent: 2,
-    late: 1,
-    earlyExit: 0,
-    overtime: 8,
-  };
+      setStatsLoading(true);
+      const token = localStorage.getItem('token');
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
 
-  const performance = {
-    rating: 4.5,
-    goals: 8,
-    completed: 6,
-    pending: 2,
-  };
+      // Determine endpoints based on context (viewing self vs viewing other)
+      const isViewingSelf = !routeId; // crude check, but consistent with loadProfile logic
+      // Actually loadProfile sets employee.id. If routeId is set, we are viewing that employee.
+      // Endpoints:
+      // Leaves: /api/leaveBalance/my OR /api/leaveBalance/:id
+      // Attendance: /api/attendance/getAttendance OR /api/attendance/:id
+
+      const leaveUrl = routeId
+        ? `${apiBase}/api/leaveBalance/${employee.id}`
+        : `${apiBase}/api/leaveBalance/my`;
+
+      const attendanceUrl = routeId
+        ? `${apiBase}/api/attendance/${employee.id}`
+        : `${apiBase}/api/attendance/getAttendance`;
+
+      try {
+        // Fetch leave balances
+        const leaveRes = await fetch(leaveUrl, { headers: { Authorization: `Bearer ${token}` } });
+        console.log('Leave balance response status:', leaveRes);
+        if (leaveRes.ok) {
+          const leaveData = await leaveRes.json();
+          // Transform the response to the expected format
+          if (Array.isArray(leaveData)) {
+            const balances = {};
+            leaveData.forEach((lb) => {
+              const leaveType = (typeof lb.leaveType === 'string'
+                ? lb.leaveType
+                : lb.leaveType?.name || 'unknown').toLowerCase();
+              balances[leaveType] = {
+                total: lb.total || 0,
+                used: lb.used || 0,
+                remaining: lb.remaining || 0,
+              };
+            });
+            setLeaveBalances(balances);
+          }
+        } else {
+          console.warn('Failed to fetch leave balances:', leaveRes.status);
+          setLeaveBalances(null);
+        }
+      } catch (err) {
+        console.error('Error fetching leave balances:', err);
+        setLeaveBalances(null);
+      }
+
+      try {
+        // Fetch attendance stats
+        const attendanceRes = await fetch(attendanceUrl, { headers: { Authorization: `Bearer ${token}` } });
+        console.log('Attendance stats response status:', attendanceRes);
+        if (attendanceRes.ok) {
+          const attendanceDataList = await attendanceRes.json();
+
+          if (Array.isArray(attendanceDataList)) {
+            // Calculate stats from attendance records
+            let presentCount = 0;
+            let absentCount = 0;
+            let lateCount = 0;
+            let earlyExitCount = 0;
+            let overtimeHours = 0;
+
+            attendanceDataList.forEach((record) => {
+              // Status check could be simplified if API returns consistent status strings
+              const status = record.status?.toLowerCase();
+              if (status === 'present') presentCount++;
+              else if (status === 'absent') absentCount++;
+
+              if (record.isLate) lateCount++;
+              if (record.earlyExit) earlyExitCount++;
+
+              if (record.overtimeHours) {
+                overtimeHours += parseFloat(record.overtimeHours);
+              }
+            });
+
+            setAttendanceStats({
+              present: presentCount,
+              absent: absentCount,
+              late: lateCount,
+              earlyExit: earlyExitCount,
+              overtime: Math.round(overtimeHours * 10) / 10,
+            });
+          } else {
+            setAttendanceStats(null);
+          }
+        } else {
+          console.warn('Failed to fetch attendance stats:', attendanceRes.status);
+          setAttendanceStats(null);
+        }
+      } catch (err) {
+        console.error('Error fetching attendance stats:', err);
+        setAttendanceStats(null);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStatsData();
+  }, [employee?.id, routeId]);
+
+  // Fetch documents
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      if (!employee?.id || activeTab !== 'documents') return;
+
+      setDocumentsLoading(true);
+      const token = localStorage.getItem('token');
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
+      const docUrl = routeId
+        ? `${apiBase}/api/documents/employee/${employee.id}`
+        : `${apiBase}/api/documents/my`;
+
+      try {
+        const res = await fetch(docUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setDocuments(data.documents || []);
+        } else {
+          console.warn("Failed to fetch documents", res.status);
+        }
+      } catch (err) {
+        console.error("Error fetching documents", err);
+      } finally {
+        setDocumentsLoading(false);
+      }
+    };
+    fetchDocuments();
+  }, [activeTab, employee?.id, routeId]);
 
   const tabs = [
     { id: "overview", label: "Overview" },
     { id: "attendance", label: "Attendance" },
     { id: "leaves", label: "Leaves" },
-    { id: "performance", label: "Performance" },
     { id: "documents", label: "Documents" },
   ];
 
@@ -384,11 +505,10 @@ const EmployeeProfile = () => {
                   <FiMapPin className="mr-1" />
                   {employee.location}
                 </span>
-                <span className={`px-3 py-1 rounded-full text-xs ${
-                  employee.status === 'Active' 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs ${employee.status === 'Active'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                  }`}>
                   {employee.status}
                 </span>
               </div>
@@ -453,11 +573,10 @@ const EmployeeProfile = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent hover:border-gray-300'
-                }`}
+                className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === tab.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent hover:border-gray-300'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -550,52 +669,68 @@ const EmployeeProfile = () => {
           {activeTab === "attendance" && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Attendance Statistics</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className={`${theme.cardBg} p-4 rounded-lg border`}>
-                  <p className="text-2xl font-bold text-green-600">{attendanceStats.present}</p>
-                  <p className={theme.subtext}>Present</p>
+              {statsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2">Loading attendance data...</span>
                 </div>
-                <div className={`${theme.cardBg} p-4 rounded-lg border`}>
-                  <p className="text-2xl font-bold text-red-600">{attendanceStats.absent}</p>
-                  <p className={theme.subtext}>Absent</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className={`${theme.cardBg} p-4 rounded-lg border`}>
+                    <p className="text-2xl font-bold text-green-600">{attendanceStats?.present || 0}</p>
+                    <p className={theme.subtext}>Present</p>
+                  </div>
+                  <div className={`${theme.cardBg} p-4 rounded-lg border`}>
+                    <p className="text-2xl font-bold text-red-600">{attendanceStats?.absent || 0}</p>
+                    <p className={theme.subtext}>Absent</p>
+                  </div>
+                  <div className={`${theme.cardBg} p-4 rounded-lg border`}>
+                    <p className="text-2xl font-bold text-yellow-600">{attendanceStats?.late || 0}</p>
+                    <p className={theme.subtext}>Late</p>
+                  </div>
+                  <div className={`${theme.cardBg} p-4 rounded-lg border`}>
+                    <p className="text-2xl font-bold text-orange-600">{attendanceStats?.earlyExit || 0}</p>
+                    <p className={theme.subtext}>Early Exit</p>
+                  </div>
+                  <div className={`${theme.cardBg} p-4 rounded-lg border`}>
+                    <p className="text-2xl font-bold text-blue-600">{attendanceStats?.overtime || 0}</p>
+                    <p className={theme.subtext}>Overtime</p>
+                  </div>
                 </div>
-                <div className={`${theme.cardBg} p-4 rounded-lg border`}>
-                  <p className="text-2xl font-bold text-yellow-600">{attendanceStats.late}</p>
-                  <p className={theme.subtext}>Late</p>
-                </div>
-                <div className={`${theme.cardBg} p-4 rounded-lg border`}>
-                  <p className="text-2xl font-bold text-orange-600">{attendanceStats.earlyExit}</p>
-                  <p className={theme.subtext}>Early Exit</p>
-                </div>
-                <div className={`${theme.cardBg} p-4 rounded-lg border`}>
-                  <p className="text-2xl font-bold text-blue-600">{attendanceStats.overtime}</p>
-                  <p className={theme.subtext}>Overtime</p>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
           {activeTab === "leaves" && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Leave Balance</h3>
-              <div className="space-y-4">
-                {Object.entries(leaveBalances).map(([type, balance]) => (
-                  <div key={type} className={`${theme.cardBg} p-4 rounded-lg border`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-semibold capitalize">{type} Leave</h4>
-                      <span className="text-sm">
-                        {balance.remaining} / {balance.total} remaining
-                      </span>
+              {statsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2">Loading leave data...</span>
+                </div>
+              ) : leaveBalances ? (
+                <div className="space-y-4">
+                  {Object.entries(leaveBalances).map(([type, balance]) => (
+                    <div key={type} className={`${theme.cardBg} p-4 rounded-lg border`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold capitalize">{type} Leave</h4>
+                        <span className="text-sm">
+                          {balance.remaining} / {balance.total} remaining
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{ width: `${balance.total > 0 ? (balance.remaining / balance.total) * 100 : 0}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${(balance.remaining / balance.total) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={theme.subtext}>No leave data available</p>
+              )}
             </div>
           )}
 
@@ -626,7 +761,41 @@ const EmployeeProfile = () => {
           {activeTab === "documents" && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Documents & Certificates</h3>
-              <p className={theme.subtext}>Document management coming soon...</p>
+              {documentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2">Loading documents...</span>
+                </div>
+              ) : documents && documents.length > 0 ? (
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className={`${theme.cardBg} p-4 rounded-lg border flex justify-between items-center`}>
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded text-blue-600 dark:text-blue-300">
+                          <FiBriefcase className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{doc.name}</p>
+                          <p className={`text-sm ${theme.subtext}`}>{doc.category || 'General'} • {new Date(doc.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      {doc.fileUrl && (
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <FiDownload className="w-4 h-4" />
+                          <span className="text-sm font-medium">Download</span>
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={theme.subtext}>No documents found for this employee.</p>
+              )}
             </div>
           )}
         </div>

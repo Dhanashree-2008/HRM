@@ -4,11 +4,12 @@ import logo from "../images/LiteHR_logo.png";
 import hero1 from "../images/hero3.jpg";
 import hero2 from "../images/hero2.jpg";
 import hero3 from "../images/hero3.jpg";
-import { 
-  Menu, X, Clock, Calendar, BarChart3, 
+import {
+  Menu, X, Clock, Calendar, BarChart3,
   ChevronRight, LogIn, Users, TrendingUp, Shield,
-  Zap, CheckCircle, Briefcase, Home
+  Zap, CheckCircle, Briefcase, Home, ArrowRight, MapPin
 } from "lucide-react";
+import jobService from "../services/jobService";
 
 export default function Homepage() {
   const navigate = useNavigate();
@@ -17,11 +18,27 @@ export default function Homepage() {
   const [menu, setMenu] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
 
+  const [jobs, setJobs] = useState([]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % slides.length);
     }, 4000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const data = await jobService.getPublicJobs();
+        if (Array.isArray(data)) {
+          setJobs(data.slice(0, 3)); // Top 3
+        }
+      } catch (error) {
+        console.error("Failed to load jobs", error);
+      }
+    };
+    fetchJobs();
   }, []);
 
   // Navigation handlers
@@ -49,42 +66,42 @@ export default function Homepage() {
         z-50 px-6 md:px-20 border-b border-[#374151]
       ">
         {/* Logo */}
-        <div 
+        <div
           className="flex items-center gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
           <img
             src={logo}
             alt="LiteHR"
-            className="h-10 w-10 object-contain rounded-md"
+            className="h-10 w-26 object-contain rounded-md"
           />
-          <span className="text-2xl font-semibold tracking-wide">LiteHR</span>
+
         </div>
 
         {/* Desktop nav */}
         <nav className="hidden sm:flex gap-8 text-sm tracking-wide">
-          <button 
+          <button
             onClick={() => navigate("/")}
             className="relative text-sm tracking-wide hover:text-[#8B5CF6] transition group"
           >
             Home
             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#8B5CF6] group-hover:w-full transition-all duration-300"></span>
           </button>
-          <button 
+          <button
             onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
             className="relative text-sm tracking-wide hover:text-[#8B5CF6] transition group"
           >
             Features
             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#8B5CF6] group-hover:w-full transition-all duration-300"></span>
           </button>
-          <button 
+          <button
             onClick={() => document.getElementById('modules').scrollIntoView({ behavior: 'smooth' })}
             className="relative text-sm tracking-wide hover:text-[#8B5CF6] transition group"
           >
             Modules
             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#8B5CF6] group-hover:w-full transition-all duration-300"></span>
           </button>
-          <button 
+          <button
             onClick={handleCareersClick}
             className="relative text-sm tracking-wide hover:text-[#8B5CF6] transition group"
           >
@@ -95,7 +112,7 @@ export default function Homepage() {
 
         {/* Login Button */}
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={handleLoginClick}
             className="
               bg-[#8B5CF6] hover:bg-[#7C3AED]
@@ -125,7 +142,7 @@ export default function Homepage() {
           sm:hidden z-40 border-b border-[#1F2937]
         ">
           <div className="flex flex-col gap-4 text-sm">
-            <button 
+            <button
               onClick={() => {
                 navigate("/");
                 setMenu(false);
@@ -135,7 +152,7 @@ export default function Homepage() {
               <Home size={16} />
               Home
             </button>
-            <button 
+            <button
               onClick={() => {
                 document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
                 setMenu(false);
@@ -144,7 +161,7 @@ export default function Homepage() {
             >
               Features
             </button>
-            <button 
+            <button
               onClick={() => {
                 document.getElementById('modules').scrollIntoView({ behavior: 'smooth' });
                 setMenu(false);
@@ -153,7 +170,7 @@ export default function Homepage() {
             >
               Modules
             </button>
-            <button 
+            <button
               onClick={() => {
                 handleCareersClick();
                 setMenu(false);
@@ -163,7 +180,7 @@ export default function Homepage() {
               <Briefcase size={16} />
               Careers
             </button>
-            <button 
+            <button
               onClick={() => {
                 handleLoginClick();
                 setMenu(false);
@@ -192,7 +209,7 @@ export default function Homepage() {
             <Zap size={14} />
             Streamlined HR Operations
           </div>
-          
+
           <h1 className="text-4xl md:text-6xl font-bold leading-tight text-[#F9FAFB] mb-6 tracking-tight">
             Internal HR Automation{" "}
             <span className="bg-gradient-to-r from-[#8B5CF6] to-[#10B981] bg-clip-text text-transparent">
@@ -208,7 +225,7 @@ export default function Homepage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-4">
-            <button 
+            <button
               onClick={handleGetStarted}
               className="
                 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white
@@ -220,8 +237,8 @@ export default function Homepage() {
               Get Started
               <ChevronRight size={18} />
             </button>
-            
-            <button 
+
+            <button
               onClick={handleCareersClick}
               className="
                 bg-transparent border border-[#8B5CF6] text-[#8B5CF6]
@@ -252,8 +269,8 @@ export default function Homepage() {
                   onClick={() => setIndex(i)}
                   className={`
                     w-2 h-2 rounded-full transition-all
-                    ${i === index 
-                      ? "w-8 bg-[#8B5CF6]" 
+                    ${i === index
+                      ? "w-8 bg-[#8B5CF6]"
                       : "bg-[#374151] hover:bg-[#8B5CF6]"}
                   `}
                 />
@@ -271,25 +288,25 @@ export default function Homepage() {
             Experience seamless HR management with our intuitive features
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FeatureCard 
-            icon={<Clock size={22} />} 
-            title="Mark Attendance" 
+          <FeatureCard
+            icon={<Clock size={22} />}
+            title="Mark Attendance"
             description="Real-time attendance tracking with geolocation support"
             isActive={activeFeature === 0}
             onClick={() => setActiveFeature(0)}
           />
-          <FeatureCard 
-            icon={<Calendar size={22} />} 
-            title="Leave Management" 
+          <FeatureCard
+            icon={<Calendar size={22} />}
+            title="Leave Management"
             description="Automated approval workflows and balance tracking"
             isActive={activeFeature === 1}
             onClick={() => setActiveFeature(1)}
           />
-          <FeatureCard 
-            icon={<BarChart3 size={22} />} 
-            title="Work Log Submissions" 
+          <FeatureCard
+            icon={<BarChart3 size={22} />}
+            title="Work Log Submissions"
             description="Daily task logging with productivity insights"
             isActive={activeFeature === 2}
             onClick={() => setActiveFeature(2)}
@@ -300,30 +317,30 @@ export default function Homepage() {
         <div className="mt-12 bg-[#1E293B] rounded-2xl p-8 shadow-lg border border-[#374151]">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-[#111827] rounded-lg flex items-center justify-center shadow">
-              {activeFeature === 0 ? <Clock size={24} className="text-[#8B5CF6]" /> : 
-               activeFeature === 1 ? <Calendar size={24} className="text-[#10B981]" /> : 
-               <BarChart3 size={24} className="text-[#3B82F6]" />}
+              {activeFeature === 0 ? <Clock size={24} className="text-[#8B5CF6]" /> :
+                activeFeature === 1 ? <Calendar size={24} className="text-[#10B981]" /> :
+                  <BarChart3 size={24} className="text-[#3B82F6]" />}
             </div>
             <div>
               <h3 className="text-2xl font-bold text-[#F9FAFB]">
                 {activeFeature === 0 ? "Attendance System" :
-                 activeFeature === 1 ? "Leave Management" :
-                 "Work Log Analytics"}
+                  activeFeature === 1 ? "Leave Management" :
+                    "Work Log Analytics"}
               </h3>
               <p className="text-[#9CA3AF]">Feature highlights and benefits</p>
             </div>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <h4 className="font-semibold text-lg text-[#F9FAFB]">How It Works</h4>
               <p className="text-[#D1D5DB]">
                 {activeFeature === 0 ? "Employees can clock in/out with a single click, view their attendance history, and request shift changes. Managers receive instant notifications for attendance exceptions." :
-                 activeFeature === 1 ? "Submit leave requests, track balances, and get automated approvals. Managers can approve or reject requests with comments. All leave types are supported." :
-                 "Log daily tasks, track project progress, and generate productivity reports. Managers can monitor team performance and identify bottlenecks."}
+                  activeFeature === 1 ? "Submit leave requests, track balances, and get automated approvals. Managers can approve or reject requests with comments. All leave types are supported." :
+                    "Log daily tasks, track project progress, and generate productivity reports. Managers can monitor team performance and identify bottlenecks."}
               </p>
             </div>
-            
+
             <div className="bg-[#111827] rounded-xl p-6 shadow">
               <h4 className="font-semibold text-lg mb-4 text-[#F9FAFB]">Benefits</h4>
               <ul className="space-y-3">
@@ -349,6 +366,53 @@ export default function Homepage() {
         </div>
       </section>
 
+      {/* ============= RECENT OPENINGS ============= */}
+      {jobs.length > 0 && (
+        <section className="py-20 px-6 md:px-20 bg-[#0F172A]">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#F9FAFB]">Recent Openings</h2>
+            <p className="text-[#9CA3AF] max-w-2xl mx-auto">
+              Join our team and help build the future of HR
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {jobs.map(job => (
+              <div key={job.id} className="bg-[#1E293B] rounded-xl p-6 border border-[#374151] hover:border-[#8B5CF6] transition group">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-bold text-[#F9FAFB] group-hover:text-[#8B5CF6] transition">{job.title}</h3>
+                  <span className="bg-[rgba(139,92,246,0.2)] text-[#8B5CF6] text-xs font-semibold px-2 py-1 rounded-full">
+                    {job.jobType}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[#9CA3AF] mb-4 text-sm">
+                  <Briefcase size={14} />
+                  <span>{job.department}</span>
+                  <span className="mx-2">•</span>
+                  <MapPin size={14} />
+                  <span>Remote</span>
+                </div>
+                <button
+                  onClick={handleCareersClick}
+                  className="text-sm text-[#8B5CF6] hover:text-[#7C3AED] font-medium flex items-center gap-1"
+                >
+                  View Details <ArrowRight size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={handleCareersClick}
+              className="bg-[#1E293B] hover:bg-[#2D3748] border border-[#374151] text-white px-6 py-2 rounded-lg font-medium transition"
+            >
+              View All Positions
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* ============= MODULES ============= */}
       <section id="modules" className="py-20 bg-[#1E293B] px-6 md:px-20">
         <div className="text-center mb-14">
@@ -359,8 +423,8 @@ export default function Homepage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ModuleCard 
-            title="Employee Portal" 
+          <ModuleCard
+            title="Employee Portal"
             items={[
               "Attendance (IN/OUT)",
               "Leave Requests",
@@ -371,8 +435,8 @@ export default function Homepage() {
             color="purple"
           />
 
-          <ModuleCard 
-            title="Manager Portal" 
+          <ModuleCard
+            title="Manager Portal"
             items={[
               "Approve Attendance",
               "Approve Leaves",
@@ -383,8 +447,8 @@ export default function Homepage() {
             color="green"
           />
 
-          <ModuleCard 
-            title="Admin Portal" 
+          <ModuleCard
+            title="Admin Portal"
             items={[
               "Employee Master Records",
               "Role & Department Setup",
@@ -407,7 +471,7 @@ export default function Homepage() {
             Join the modern approach to HR management
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button 
+            <button
               onClick={handleLoginClick}
               className="
                 bg-white text-[#8B5CF6] hover:bg-[#F9FAFB]
@@ -418,8 +482,8 @@ export default function Homepage() {
               <LogIn size={18} />
               Login to Dashboard
             </button>
-            
-            <button 
+
+            <button
               onClick={handleCareersClick}
               className="
                 bg-transparent border-2 border-white text-white hover:bg-white/10
@@ -469,7 +533,7 @@ export default function Homepage() {
       <footer className="w-full bg-[#020617] text-white py-8">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div 
+            <div
               className="flex items-center gap-3 cursor-pointer"
               onClick={() => navigate("/")}
             >
@@ -480,19 +544,19 @@ export default function Homepage() {
               />
               <span className="text-xl font-semibold tracking-wide">LiteHR</span>
             </div>
-            
+
             <p className="text-sm text-[#9CA3AF] text-center">
               Internal HR Automation System • © 2025 (Not for commercial use)
             </p>
-            
+
             <div className="flex gap-6">
-              <button 
+              <button
                 onClick={handleLoginClick}
                 className="text-[#9CA3AF] hover:text-[#F9FAFB] transition text-sm"
               >
                 Login
               </button>
-              <button 
+              <button
                 onClick={handleCareersClick}
                 className="text-[#9CA3AF] hover:text-[#F9FAFB] transition text-sm"
               >
@@ -510,12 +574,12 @@ export default function Homepage() {
 
 function FeatureCard({ icon, title, description, isActive, onClick }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={`
         bg-[#1E293B] rounded-xl p-6 text-left transition-all border
-        ${isActive 
-          ? 'shadow-xl border-[#8B5CF6] -translate-y-1' 
+        ${isActive
+          ? 'shadow-xl border-[#8B5CF6] -translate-y-1'
           : 'shadow-lg hover:shadow-xl hover:-translate-y-1 hover:border-[rgba(139,92,246,0.3)]'}
       `}
     >

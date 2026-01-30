@@ -1,5 +1,6 @@
 import { ThemeWrapper } from '../contexts/ThemeContext';
 import React, { useState, useEffect } from "react";
+import Chatbot from "../components/Chatbot";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FiGrid,
@@ -13,10 +14,12 @@ import {
   FiSun,
   FiMoon,
   FiFileText,
+  FiDollarSign,
 } from "react-icons/fi";
 import { IoMdNotificationsOutline } from "react-icons/io";
+import { notificationService } from "../services/notificationService";
 
-const EmployeeLayout = () => {
+const EmployeeLayout = ({ logout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [userDropdown, setUserDropdown] = useState(false);
@@ -84,7 +87,8 @@ const EmployeeLayout = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    if (logout) logout();
+    else localStorage.removeItem("token");
     navigate("/login");
   };
 
@@ -93,13 +97,50 @@ const EmployeeLayout = () => {
     { label: "Mark Attendance", icon: <FiClock />, path: "/employee/attendance" },
     { label: "Leave Requests", icon: <FiCalendar />, path: "/employee/leaves" },
     { label: "Worklogs", icon: <FiClipboard />, path: "/employee/worklogs" },
+    { label: "Personal Documents", icon: <FiFileText />, path: "/employee/documents" },
+    { label: "Salary Payslips", icon: <FiDollarSign />, path: "/employee/payslips" },
     { label: "My Profile", icon: <FiUser />, path: "/employee/profile" },
   ];
 
-  const notifications = [
-    { id: 1, text: "Leave request approved", time: "2 min ago", unread: true },
-    { id: 2, text: "Worklog reminder", time: "1 hour ago", unread: false },
-  ];
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await notificationService.getAll();
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.isRead).length);
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleMarkRead = async (id) => {
+    try {
+      await notificationService.markRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Failed to mark read", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Failed to mark all read", err);
+    }
+  };
 
   // Helper function to check if a path is active
   const isActivePath = (itemPath, currentPath) => {
@@ -307,24 +348,43 @@ const EmployeeLayout = () => {
                 className={`p-2 rounded-lg ${sidebarHoverBg} transition-colors relative`}
               >
                 <IoMdNotificationsOutline className={`w-5 h-5 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`} />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-600 text-white text-xs rounded-full flex items-center justify-center">
-                  {notifications.filter(n => n.unread).length}
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-600 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
 
               {notificationsOpen && (
                 <div className={`absolute right-0 mt-2 w-80 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg border ${sidebarBorder} py-2 z-50`}>
-                  <div className={`px-4 py-3 border-b ${sidebarBorder}`}>
+                  <div className={`px-4 py-3 border-b ${sidebarBorder} flex justify-between items-center`}>
                     <h3 className={`font-semibold ${sidebarText}`}>Notifications</h3>
-                  </div>
-                  {notifications.map(notif => (
-                    <div key={notif.id} className={`px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors ${notif.unread ? (darkMode ? 'bg-emerald-600/10' : 'bg-emerald-50') : ''}`}>
-                      <p className={`text-sm ${sidebarText}`}>{notif.text}</p>
-                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
-                        {notif.time}
-                      </p>
+                    <div className="flex gap-2 text-xs">
+                      {unreadCount > 0 && <button onClick={handleMarkAllRead} className="text-emerald-500 hover:text-emerald-600">Mark all read</button>}
                     </div>
-                  ))}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className={`p-4 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No notifications</div>
+                    ) : (
+                      notifications.map(notif => (
+                        <div key={notif.id}
+                          onClick={() => !notif.isRead && handleMarkRead(notif.id)}
+                          className={`px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors cursor-pointer border-b ${sidebarBorder} last:border-0 ${!notif.isRead ? (darkMode ? 'bg-emerald-600/10' : 'bg-emerald-50') : ''}`}>
+                          <p className={`text-sm ${sidebarText}`}>{notif.title}</p>
+                          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>{notif.message}</p>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {new Date(notif.createdAt).toLocaleString()}
+                            </span>
+                            {!notif.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -387,6 +447,7 @@ const EmployeeLayout = () => {
           </div>
         </main>
       </div>
+      <Chatbot />
     </div>
   );
 };

@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 import { FiArrowLeft, FiUpload, FiFileText, FiCheck, FiX } from "react-icons/fi";
 import { Link } from "react-router-dom";
-import { useTheme, useThemeClasses} from "../../../contexts/ThemeContext";
+import { useTheme, useThemeClasses } from "../../../contexts/ThemeContext";
 
 const UploadDocument = () => {
   const [formData, setFormData] = useState({
@@ -14,19 +16,47 @@ const UploadDocument = () => {
     file: null,
   });
 
+  const [employees, setEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const darkMode = useTheme();
   const theme = useThemeClasses();
 
-  const employees = [
-    { id: "EMP001", name: "Rahul Sharma" },
-    { id: "EMP002", name: "Simran Kaur" },
-    { id: "EMP003", name: "Ankit Mehta" },
-    { id: "EMP004", name: "Priya Patel" },
-    { id: "EMP005", name: "Rohit Sharma" },
-  ];
+  // Fetch employees
+  React.useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("/api/admin/employees", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (Array.isArray(response.data)) {
+          setEmployees(response.data
+            .filter(user => user.employee)
+            .map(user => ({
+              id: user.employee.id,
+              name: user.employee.fullName,
+              empId: user.employee.employeeCode
+            })));
+        } else if (response.data.success && response.data.employees) {
+          setEmployees(response.data.employees.map(emp => ({
+            id: emp.id,
+            name: emp.fullName || `${emp.first_name} ${emp.last_name}`,
+            empId: emp.employeeCode || emp.employee_id
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch employees", error);
+        toast.error("Failed to load employee list");
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   const documentTypes = [
     "Offer Letter", "Employment Contract", "Salary Slip", "NDA Agreement",
@@ -60,7 +90,7 @@ const UploadDocument = () => {
         setErrors({ ...errors, file: "File size must be less than 10MB" });
         return;
       }
-      
+
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         setErrors({ ...errors, file: "Only PDF, DOC, DOCX, JPG, PNG files are allowed" });
@@ -81,40 +111,56 @@ const UploadDocument = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
-    
+
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
-      
-      // Simulate upload progress
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        setUploadProgress(progress);
-        
-        if (progress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            console.log("Document uploaded:", formData);
-            setIsSubmitting(false);
-            setUploadProgress(0);
-            alert("Document uploaded successfully!");
-            
-            // Reset form
-            setFormData({
-              employeeId: "",
-              documentType: "",
-              category: "",
-              description: "",
-              confidentialLevel: "Medium",
-              expiryDate: "",
-              file: null,
-            });
-          }, 500);
-        }
-      }, 200);
+
+      try {
+        const data = new FormData();
+        data.append("employeeId", formData.employeeId);
+        data.append("documentType", formData.documentType);
+        data.append("category", formData.category);
+        data.append("description", formData.description);
+        data.append("confidentialLevel", formData.confidentialLevel);
+        if (formData.expiryDate) data.append("expiryDate", formData.expiryDate);
+        data.append("file", formData.file);
+
+        const token = localStorage.getItem("token");
+
+        await axios.post("/api/documents/upload", data, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        });
+
+        toast.success("Document uploaded successfully!");
+        setUploadProgress(0);
+
+        // Reset form
+        setFormData({
+          employeeId: "",
+          documentType: "",
+          category: "",
+          description: "",
+          confidentialLevel: "Medium",
+          expiryDate: "",
+          file: null,
+        });
+
+      } catch (error) {
+        console.error("Upload error", error);
+        toast.error(error.response?.data?.message || "Failed to upload document");
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       setErrors(validationErrors);
     }
@@ -158,7 +204,7 @@ const UploadDocument = () => {
           {/* Document Details Card */}
           <div className={`${getBgColor()} rounded-xl p-6 border ${getBorderColor()} shadow-sm`}>
             <h3 className={`text-lg font-semibold ${getTextColor()} mb-4`}>Document Details</h3>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Employee Selection */}
@@ -170,14 +216,13 @@ const UploadDocument = () => {
                     name="employeeId"
                     value={formData.employeeId}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 ${getInputBg()} border ${
-                      errors.employeeId ? "border-rose-500" : getBorderColor()
-                    } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${getTextColor()} transition-all`}
+                    className={`w-full px-4 py-3 ${getInputBg()} border ${errors.employeeId ? "border-rose-500" : getBorderColor()
+                      } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${getTextColor()} transition-all`}
                   >
                     <option value="" className={darkMode ? "bg-gray-800" : "bg-white"}>Select Employee</option>
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.id} className={darkMode ? "bg-gray-800" : "bg-white"}>
-                        {emp.name} ({emp.id})
+                        {emp.name} ({emp.empId || 'No ID'})
                       </option>
                     ))}
                   </select>
@@ -195,9 +240,8 @@ const UploadDocument = () => {
                     name="documentType"
                     value={formData.documentType}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 ${getInputBg()} border ${
-                      errors.documentType ? "border-rose-500" : getBorderColor()
-                    } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${getTextColor()} transition-all`}
+                    className={`w-full px-4 py-3 ${getInputBg()} border ${errors.documentType ? "border-rose-500" : getBorderColor()
+                      } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${getTextColor()} transition-all`}
                   >
                     <option value="" className={darkMode ? "bg-gray-800" : "bg-white"}>Select Type</option>
                     {documentTypes.map(type => (
@@ -218,9 +262,8 @@ const UploadDocument = () => {
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 ${getInputBg()} border ${
-                      errors.category ? "border-rose-500" : getBorderColor()
-                    } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${getTextColor()} transition-all`}
+                    className={`w-full px-4 py-3 ${getInputBg()} border ${errors.category ? "border-rose-500" : getBorderColor()
+                      } rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${getTextColor()} transition-all`}
                   >
                     <option value="" className={darkMode ? "bg-gray-800" : "bg-white"}>Select Category</option>
                     {categories.map(cat => (
@@ -251,11 +294,10 @@ const UploadDocument = () => {
                           onChange={handleChange}
                           className="sr-only"
                         />
-                        <span className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                          formData.confidentialLevel === level.value
-                            ? level.color + " ring-2 ring-offset-1 ring-offset-gray-800 ring-opacity-50"
-                            : `${getInputBg()} ${getSecondaryTextColor()} hover:${darkMode ? 'bg-gray-600' : 'bg-gray-200'} hover:text-gray-800`
-                        }`}>
+                        <span className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${formData.confidentialLevel === level.value
+                          ? level.color + " ring-2 ring-offset-1 ring-offset-gray-800 ring-opacity-50"
+                          : `${getInputBg()} ${getSecondaryTextColor()} hover:${darkMode ? 'bg-gray-600' : 'bg-gray-200'} hover:text-gray-800`
+                          }`}>
                           {level.label}
                         </span>
                       </label>
@@ -299,7 +341,7 @@ const UploadDocument = () => {
           {/* File Upload Card */}
           <div className={`${getBgColor()} rounded-xl p-6 border ${getBorderColor()} shadow-sm`}>
             <h3 className={`text-lg font-semibold ${getTextColor()} mb-4`}>File Upload</h3>
-            
+
             {!formData.file ? (
               <div className={`border-2 border-dashed ${getBorderColor()} rounded-xl p-8 text-center ${getCardBg()}`}>
                 <div className={`w-16 h-16 mx-auto mb-4 rounded-full ${getInputBg()} flex items-center justify-center`}>
@@ -348,7 +390,7 @@ const UploadDocument = () => {
                     <FiX className="w-5 h-5" />
                   </button>
                 </div>
-                
+
                 {isSubmitting && (
                   <div className="mt-4">
                     <div className="flex justify-between text-sm text-gray-400 mb-2">
@@ -356,7 +398,7 @@ const UploadDocument = () => {
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className={`h-2 ${getInputBg()} rounded-full overflow-hidden`}>
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-purple-500 to-purple-700 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       ></div>
@@ -365,7 +407,7 @@ const UploadDocument = () => {
                 )}
               </div>
             )}
-            
+
             {errors.file && (
               <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg">
                 <p className="text-sm text-rose-400">{errors.file}</p>
@@ -383,7 +425,7 @@ const UploadDocument = () => {
               <div className={`p-4 ${getCardBg()} rounded-xl border ${getBorderColor()}`}>
                 <p className={`text-sm ${getSecondaryTextColor()} mb-1`}>Employee</p>
                 <p className={`font-medium ${getTextColor()}`}>
-                  {formData.employeeId 
+                  {formData.employeeId
                     ? employees.find(e => e.id === formData.employeeId)?.name || "Not selected"
                     : "Not selected"
                   }
@@ -397,9 +439,8 @@ const UploadDocument = () => {
               </div>
               <div className={`p-4 ${getCardBg()} rounded-xl border ${getBorderColor()}`}>
                 <p className={`text-sm ${getSecondaryTextColor()} mb-1`}>Confidentiality</p>
-                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
-                  confidentialLevels.find(l => l.value === formData.confidentialLevel)?.color || `${getInputBg()} ${getSecondaryTextColor()}`
-                }`}>
+                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${confidentialLevels.find(l => l.value === formData.confidentialLevel)?.color || `${getInputBg()} ${getSecondaryTextColor()}`
+                  }`}>
                   {formData.confidentialLevel}
                 </span>
               </div>
@@ -424,11 +465,10 @@ const UploadDocument = () => {
                 disabled={isSubmitting}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg shadow font-medium transition-all ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""}`}
               >
-                <div className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium ${
-                  isSubmitting
-                    ? `${darkMode ? 'bg-emerald-500/30' : 'bg-emerald-100'} ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`
-                    : "bg-purple-600 hover:bg-purple-700 text-white"
-                }`}>
+                <div className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium ${isSubmitting
+                  ? `${darkMode ? 'bg-emerald-500/30' : 'bg-emerald-100'} ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`
+                  : "bg-purple-600 hover:bg-purple-700 text-white"
+                  }`}>
                   {isSubmitting ? (
                     <>
                       <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">

@@ -30,7 +30,7 @@ const Notifications = () => {
     const load = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/notifications", {
+        const res = await axios.get("/api/notifications", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const mapped = res.data.map((n) => ({
@@ -55,7 +55,7 @@ const Notifications = () => {
   const markAsRead = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.patch(`http://localhost:5000/api/notifications/${id}/read`, {}, {
+      await axios.patch(`/api/notifications/${id}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications((prev) =>
@@ -69,7 +69,7 @@ const Notifications = () => {
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.patch("http://localhost:5000/api/notifications/read-all", {}, {
+      await axios.patch("/api/notifications/read-all", {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -81,7 +81,7 @@ const Notifications = () => {
   const deleteNotification = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/notifications/${id}`, {
+      await axios.delete(`/api/notifications/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -93,7 +93,7 @@ const Notifications = () => {
   const clearAll = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/notifications/clear", {}, {
+      await axios.post("/api/notifications/clear", {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications([]);
@@ -184,8 +184,8 @@ const Notifications = () => {
                           stat.trend === "down" ? <div className="w-4 h-4 text-rose-400 rotate-90">↓</div> :
                             <div className={`w-4 h-0.5 ${darkMode ? 'bg-slate-400' : 'bg-slate-300'}`}></div>}
                         <span className={`text-sm font-medium ${stat.trend === "up" ? "text-emerald-400" :
-                            stat.trend === "down" ? "text-rose-400" :
-                              darkMode ? "text-slate-400" : "text-slate-500"
+                          stat.trend === "down" ? "text-rose-400" :
+                            darkMode ? "text-slate-400" : "text-slate-500"
                           }`}>
                           {stat.change}
                         </span>
@@ -211,13 +211,7 @@ const Notifications = () => {
                 Mark All as Read
               </div>
             </button>
-            <button className="relative group flex items-center gap-2 px-4 py-2.5">
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg blur opacity-0 group-hover:opacity-30"></div>
-              <div className={`relative flex items-center gap-2 ${darkMode ? 'bg-slate-800/50' : 'bg-white/80'} backdrop-blur-sm border ${getBorderColor()} px-4 py-2.5 rounded-lg hover:border-cyan-500/30 ${getTextColor()}`}>
-                <FiSettings className="w-4 h-4" />
-                Notification Settings
-              </div>
-            </button>
+
           </div>
         </div>
       </div>
@@ -237,8 +231,8 @@ const Notifications = () => {
               key={btn.value}
               onClick={() => setFilter(btn.value)}
               className={`relative group px-4 py-2 rounded-lg font-medium ${filter === btn.value
-                  ? `bg-gradient-to-br ${btn.color} text-white`
-                  : `${getCardBg()} ${getSecondaryTextColor()} hover:text-purple-600 border ${getBorderColor()} hover:border-purple-500/30`
+                ? `bg-gradient-to-br ${btn.color} text-white`
+                : `${getCardBg()} ${getSecondaryTextColor()} hover:text-purple-600 border ${getBorderColor()} hover:border-purple-500/30`
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -365,42 +359,7 @@ const Notifications = () => {
         )}
       </div>
 
-      {/* Notification Settings Preview */}
-      <div className={`bg-gradient-to-br ${darkMode ? 'from-slate-900 to-slate-800' : 'from-slate-50 to-slate-100'} rounded-2xl p-6 border ${getBorderColor()} mt-6`}>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className={`text-xl font-bold ${getTextColor()}`}>Notification Settings</h3>
-          <button className={`${darkMode ? 'text-cyan-400 hover:text-cyan-300' : 'text-cyan-600 hover:text-cyan-700'} font-medium`}>
-            Edit Settings
-          </button>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { type: "Email", enabled: true, count: 42, color: darkMode ? "from-cyan-400 to-blue-500" : "from-cyan-500 to-blue-600" },
-            { type: "Push", enabled: true, count: 28, color: darkMode ? "from-emerald-400 to-green-500" : "from-emerald-500 to-emerald-600" },
-            { type: "SMS", enabled: false, count: 0, color: darkMode ? "from-rose-400 to-red-500" : "from-rose-500 to-rose-600" },
-            { type: "In-App", enabled: true, count: notifications.length, color: darkMode ? "from-purple-400 to-pink-500" : "from-purple-500 to-pink-600" },
-          ].map((setting) => (
-            <div key={setting.type} className="relative group">
-              <div className={`absolute -inset-1 bg-gradient-to-r ${darkMode ? 'from-cyan-500 to-purple-500' : 'from-cyan-400 to-purple-400'} rounded-lg blur opacity-20 group-hover:opacity-30`}></div>
-              <div className={`relative ${darkMode ? 'bg-slate-800/50' : 'bg-white/80'} backdrop-blur-sm border ${getBorderColor()} rounded-lg p-4 hover:border-cyan-500/30 transition-colors`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`font-medium ${getTextColor()}`}>{setting.type}</span>
-                  <div className={`w-3 h-3 rounded-full ${setting.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                </div>
-                <div className={`text-2xl font-bold ${getTextColor()} mb-1`}>{setting.count}</div>
-                <p className={`text-sm ${getSecondaryTextColor()}`}>notifications sent</p>
-                <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full bg-gradient-to-r ${setting.color} rounded-full`}
-                    style={{ width: `${Math.min((setting.count / 50) * 100, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

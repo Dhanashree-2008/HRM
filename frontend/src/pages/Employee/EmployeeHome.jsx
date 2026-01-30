@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import employeeService from "../../services/employeeService";
+import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import {
   Home,
   Clock,
@@ -115,7 +116,7 @@ const EmployeeDashboard = () => {
   });
 
   // Filter states
-  const [selectedYear, setSelectedYear] = useState(2024);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -131,8 +132,15 @@ const EmployeeDashboard = () => {
   // Holiday data
   const [holidayData, setHolidayData] = useState({});
 
+  // Leave Types
+  const [leaveTypes, setLeaveTypes] = useState([]);
+
+
+
+
+
   // Sample data
-  const [notifications] = useState([
+  const [notifications, setNotifications] = useState([
     {
       id: 1,
       title: "Payslip Available",
@@ -140,22 +148,6 @@ const EmployeeDashboard = () => {
       time: "2 hours ago",
       read: false,
       type: "info",
-    },
-    {
-      id: 2,
-      title: "Leave Approved",
-      message: "Your leave request has been approved",
-      time: "1 day ago",
-      read: true,
-      type: "success",
-    },
-    {
-      id: 3,
-      title: "Meeting Reminder",
-      message: "Team meeting at 11:00 AM today",
-      time: "3 hours ago",
-      read: false,
-      type: "warning",
     },
   ]);
 
@@ -175,7 +167,7 @@ const EmployeeDashboard = () => {
 
   const [leaves, setLeaves] = useState([]);
 
-
+  const [viewPayslip, setViewPayslip] = useState(null);
 
   const [personalDocuments, setPersonalDocuments] = useState([]);
 
@@ -197,7 +189,8 @@ const EmployeeDashboard = () => {
         leaveBalances,
         holidaysList,
         payslipsList,
-        documentsList
+        documentsList,
+        leaveTypesList
       ] = await Promise.all([
         employeeService.getDashboardStats(),
         employeeService.getAttendance(),
@@ -207,7 +200,8 @@ const EmployeeDashboard = () => {
         employeeService.getLeaveBalance(),
         employeeService.getHolidays(),
         employeeService.getPayslips(),
-        employeeService.getDocuments()
+        employeeService.getDocuments(),
+        employeeService.getLeaveTypes()
       ]);
 
       // Calculate weekly hours from worklogs
@@ -256,7 +250,9 @@ const EmployeeDashboard = () => {
           status: record.markIn ? 'present' : 'absent',
           hours: hours,
           markIn: record.markIn ? new Date(record.markIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--',
-          markOut: record.markOut ? new Date(record.markOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'
+          markOut: record.markOut ? new Date(record.markOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--',
+          rawMarkIn: record.markIn,
+          rawMarkOut: record.markOut
         };
       });
       setAttendanceData(attendanceMap);
@@ -291,7 +287,18 @@ const EmployeeDashboard = () => {
         ...t,
         completed: t.status === 'COMPLETED'
       })));
-      setLeaves(leavesList);
+      setLeaves(leavesList.map(l => {
+        const start = new Date(l.fromDate);
+        const end = new Date(l.toDate);
+        const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        return {
+          ...l,
+          type: l.leaveType,
+          from: l.fromDate,
+          to: l.toDate,
+          days: isNaN(days) ? 0 : days
+        };
+      }));
       setWorklogs(worklogsList.map(w => ({
         ...w,
         task: "Work Log",
@@ -300,17 +307,20 @@ const EmployeeDashboard = () => {
         status: "Completed"
       })));
       setPayslips(payslipsList);
-      setPersonalDocuments(documentsList);
+      setPersonalDocuments(documentsList.documents || documentsList || []);
 
 
       // Process leave balance
       const balanceMap = { casual: 0, sick: 0, earned: 0 };
       if (Array.isArray(leaveBalances)) {
         leaveBalances.forEach(b => {
-          const typeName = (b.LeaveType?.name || b.leaveType?.name || "").toLowerCase();
-          if (typeName.includes('casual')) balanceMap.casual = b.remaining;
-          else if (typeName.includes('sick')) balanceMap.sick = b.remaining;
-          else if (typeName.includes('earned') || typeName.includes('privilege')) balanceMap.earned = b.remaining;
+          // Backend returns flattened structure: { leaveType: "name", code: "code", ... }
+          const typeName = (b.leaveType || b.LeaveType?.name || "").toLowerCase();
+          const typeCode = (b.code || b.LeaveType?.code || "").toLowerCase();
+
+          if (typeName.includes('casual') || typeCode === 'cl') balanceMap.casual = b.remaining;
+          else if (typeName.includes('sick') || typeCode === 'sl') balanceMap.sick = b.remaining;
+          else if (typeName.includes('earned') || typeName.includes('privilege') || typeCode === 'el' || typeCode === 'pl') balanceMap.earned = b.remaining;
         });
       }
       setLeaveBalance(balanceMap);
@@ -327,9 +337,14 @@ const EmployeeDashboard = () => {
       }
       setHolidayData(holidayMap);
 
+      setLeaveTypes(Array.isArray(leaveTypesList) ? leaveTypesList : []);
+
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
-      setError("Failed to load dashboard data");
+      // Show more specific error if available
+      const errMsg = err.response?.data?.message || err.message || "Failed to load dashboard data";
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -397,6 +412,37 @@ const EmployeeDashboard = () => {
 
   }, [tasks]);
 
+
+  // Calculate today's hours dynamically
+  const [todayHours, setTodayHours] = useState("0h 0m");
+
+  useEffect(() => {
+    const calculateTodayHours = () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayRecord = attendanceData[todayStr];
+
+      if (todayRecord && todayRecord.rawMarkIn) {
+        const start = new Date(todayRecord.rawMarkIn);
+        const end = todayRecord.rawMarkOut ? new Date(todayRecord.rawMarkOut) : currentTime;
+
+        if (!isNaN(start)) {
+          const diffMs = end - start;
+          const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          setTodayHours(`${diffHrs}h ${diffMins}m`);
+        } else {
+          setTodayHours("0h 0m");
+        }
+      } else {
+        setTodayHours("0h 0m");
+      }
+    };
+
+    calculateTodayHours();
+    // Re-calculate every minute if clocked in
+    const interval = setInterval(calculateTodayHours, 60000);
+    return () => clearInterval(interval);
+  }, [attendanceData, currentTime]);
 
   // Interactive state for graph hover
   const [hoveredBar, setHoveredBar] = useState(null);
@@ -587,7 +633,7 @@ const EmployeeDashboard = () => {
     e.preventDefault();
     try {
       await employeeService.applyLeave({
-        leaveType: newLeave.type.toUpperCase(),
+        leaveType: newLeave.type, // Sending the value directly (code or name)
         fromDate: newLeave.from,
         toDate: newLeave.to,
         reason: newLeave.reason
@@ -628,7 +674,7 @@ const EmployeeDashboard = () => {
 
   // Filtered payslips
   const filteredPayslips = payslips.filter(
-    (payslip) => payslip.year === selectedYear
+    (payslip) => Number(payslip.year) === Number(selectedYear)
   );
 
   // Filtered documents
@@ -1008,7 +1054,7 @@ const EmployeeDashboard = () => {
             Today's Hours
           </span>
           <span style={{ color: themeColors.success }} className="font-medium">
-            8h 30m
+            {todayHours}
           </span>
         </div>
       </div>
@@ -1482,10 +1528,12 @@ const EmployeeDashboard = () => {
             style={{ color: themeColors.info }}
           >
             {Math.round(
-              taskCompletionData.reduce(
-                (sum, item) => sum + (item.completed / item.total) * 100,
-                0
-              ) / taskCompletionData.length
+              taskCompletionData.length > 0
+                ? taskCompletionData.reduce(
+                  (sum, item) => sum + (item.total > 0 ? (item.completed / item.total) * 100 : 0),
+                  0
+                ) / taskCompletionData.length
+                : 0
             )}
             %
           </div>
@@ -1497,144 +1545,557 @@ const EmployeeDashboard = () => {
     </div>
   );
 
-  // Today's Tasks Section
-  const TodaysTasksSection = () => (
+  // Today's Summary Component
+  const TodaysSummary = () => {
+    // Parse todayHours (e.g., "8h 30m") to calculate overtime
+    let overtimeStr = "0m";
+    if (todayHours) {
+      const parts = todayHours.split(' ');
+      let totalMins = 0;
+      parts.forEach(p => {
+        if (p.includes('h')) totalMins += parseInt(p) * 60;
+        if (p.includes('m')) totalMins += parseInt(p);
+      });
+
+      const standardDay = 8 * 60;
+      if (totalMins > standardDay) {
+        const overtimeMins = totalMins - standardDay;
+        const otHrs = Math.floor(overtimeMins / 60);
+        const otMins = overtimeMins % 60;
+        overtimeStr = otHrs > 0 ? `+${otHrs}h ${otMins}m` : `+${otMins}m`;
+      }
+    }
+
+    const summaryItems = [
+      {
+        label: "Work Duration",
+        value: todayHours || "0h 0m",
+        color: themeColors.textPrimary,
+        icon: Clock,
+      },
+      {
+        label: "Overtime",
+        value: overtimeStr,
+        color: themeColors.success,
+        icon: TrendingUp,
+      },
+      {
+        label: "Break Time",
+        value: "1h 0m", // Placeholder
+        color: themeColors.warning,
+        icon: Coffee,
+      },
+      {
+        label: "Productivity",
+        value: `${analytics.productivity || 0}%`,
+        color: themeColors.info,
+        icon: Zap,
+      },
+    ];
+
+    return (
+      <div
+        className="rounded-lg p-6 border transform hover:scale-[1.002] transition-all duration-300"
+        style={{
+          backgroundColor: themeColors.cardBackground,
+          borderColor: themeColors.borderDivider,
+        }}
+      >
+        <h3
+          className="text-lg font-semibold mb-4"
+          style={{ color: themeColors.textPrimary }}
+        >
+          Today's Summary
+        </h3>
+        <div className="space-y-3">
+          {summaryItems.map((item, index) => (
+            <div
+              key={index}
+              className="p-3 rounded-lg hover:scale-[1.02] transition-transform group flex items-center justify-between"
+              style={{ backgroundColor: themeColors.cardHover }}
+            >
+              <div className="flex items-center">
+                <item.icon
+                  size={16}
+                  className="mr-2"
+                  style={{ color: item.color }}
+                />
+                <span
+                  className="text-sm"
+                  style={{ color: themeColors.textSecondary }}
+                >
+                  {item.label}
+                </span>
+              </div>
+              <span
+                className="font-medium flex items-center"
+                style={{ color: item.color }}
+              >
+                {item.value}
+                <ChevronRight
+                  size={12}
+                  className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Payslips Section
+  const renderPayslips = () => (
     <div
-      className="rounded-lg border transform hover:scale-[1.002] transition-all duration-300"
+      className="rounded-lg p-6 border mb-6"
       style={{
         backgroundColor: themeColors.cardBackground,
         borderColor: themeColors.borderDivider,
       }}
     >
-      <div
-        className="p-5 border-b"
-        style={{ borderColor: themeColors.borderDivider }}
-      >
-        <div className="flex justify-between items-center">
-          <h3
-            className="text-lg font-semibold"
-            style={{ color: themeColors.textPrimary }}
+      <div className="flex justify-between items-center mb-6">
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: themeColors.textPrimary }}
+        >
+          My Payslips
+        </h1>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Year:</span>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            style={{
+              backgroundColor: themeColors.appBackground,
+              color: themeColors.textPrimary,
+              borderColor: themeColors.borderDivider
+            }}
           >
-            Today's Tasks
-          </h3>
-          <button
-            onClick={() => setShowNewTaskModal(true)}
-            className="px-3 py-1.5 rounded text-sm font-medium flex items-center transform hover:scale-105 transition-transform"
-            style={{ backgroundColor: themeColors.primary, color: "#FFFFFF" }}
-          >
-            <Plus size={16} className="mr-1" />
-            New Task
-          </button>
+            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
         </div>
       </div>
-      <div className="p-5">
-        <div className="space-y-3">
-          {tasks.map((task) => (
+
+      {filteredPayslips.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredPayslips.map((payslip) => (
             <div
-              key={task.id}
-              className="p-3 rounded-lg transition-all flex items-start hover:scale-[1.01] hover:shadow-md group"
+              key={payslip.id}
+              className="p-5 rounded-lg border hover:shadow-md transition-all duration-300"
               style={{
-                backgroundColor: themeColors.cardHover,
-                border: `1px solid ${themeColors.borderDivider}`,
-                cursor: "pointer",
+                backgroundColor: themeColors.cardHover, // Using cardHover for slight differentiation or cardBackground
+                borderColor: themeColors.borderDivider,
               }}
-              onClick={() => handleTaskComplete(task.id)}
-              onMouseEnter={() => setHoveredItem(task.id)}
-              onMouseLeave={() => setHoveredItem(null)}
             >
-              <div className="mr-3 mt-0.5 flex-shrink-0 transform group-hover:scale-110 transition-transform">
-                {task.completed ? (
-                  <CheckSquare
-                    size={20}
-                    style={{ color: themeColors.success }}
-                  />
-                ) : (
-                  <Square size={20} style={{ color: themeColors.textMuted }} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between">
+              <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <div className="flex items-center space-x-4">
+                  <div
+                    className="p-3 rounded-full"
+                    style={{ backgroundColor: themeColors.primaryLight }}
+                  >
+                    <FileSpreadsheet
+                      size={24}
+                      style={{ color: themeColors.primary }}
+                    />
+                  </div>
                   <div>
-                    <h4
-                      className={`font-medium ${task.completed ? "line-through" : ""
-                        }`}
-                      style={{
-                        color: task.completed
-                          ? themeColors.textMuted
-                          : themeColors.textPrimary,
-                      }}
+                    <h3
+                      className="text-lg font-bold"
+                      style={{ color: themeColors.textPrimary }}
                     >
-                      {task.title}
-                    </h4>
-                    <p
-                      className="text-sm mt-1"
-                      style={{ color: themeColors.textSecondary }}
-                    >
-                      {task.description}
-                    </p>
-                    <div className="flex items-center mt-2 space-x-2">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded transform hover:scale-105 transition-transform"
-                        style={{
-                          backgroundColor:
-                            task.project === "Alpha"
-                              ? themeColors.primaryLight
-                              : task.project === "Beta"
-                                ? themeColors.infoBg
-                                : themeColors.warningBg,
-                          color:
-                            task.project === "Alpha"
-                              ? themeColors.primary
-                              : task.project === "Beta"
-                                ? themeColors.info
-                                : themeColors.warning,
-                        }}
-                      >
-                        {task.project}
-                      </span>
-                      <span
-                        className="text-xs px-2 py-0.5 rounded transform hover:scale-105 transition-transform"
-                        style={{
-                          backgroundColor:
-                            task.priority === "high"
-                              ? themeColors.dangerBg
-                              : task.priority === "medium"
-                                ? themeColors.warningBg
-                                : themeColors.successBg,
-                          color:
-                            task.priority === "high"
-                              ? themeColors.danger
-                              : task.priority === "medium"
-                                ? themeColors.warning
-                                : themeColors.success,
-                        }}
-                      >
-                        {task.priority}
-                      </span>
-                      <span
-                        className="text-xs"
-                        style={{ color: themeColors.textMuted }}
-                      >
-                        {task.time}
-                      </span>
+                      {payslip.month}/{payslip.year}
+                    </h3>
+                    <div className="flex flex-col sm:flex-row sm:space-x-4 text-sm mt-1" style={{ color: themeColors.textSecondary }}>
+                      <span>Working Days: {payslip.workingDays}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>Present: {payslip.presentDays}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>Unpaid Leave: {payslip.unpaidLeaves}</span>
                     </div>
                   </div>
-                  {hoveredItem === task.id && (
-                    <button className="ml-2 p-1 rounded transform hover:scale-125 transition-transform">
-                      <ChevronRight
-                        size={16}
-                        style={{ color: themeColors.textSecondary }}
-                      />
-                    </button>
+                </div>
+
+                <div className="flex flex-col items-end min-w-[150px]">
+                  <span className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: themeColors.textSecondary }}>Net Salary</span>
+                  <span className="text-xl font-bold" style={{ color: themeColors.success }}>₹{parseFloat(payslip.netSalary).toLocaleString('en-IN')}</span>
+                  {parseFloat(payslip.deduction) > 0 && (
+                    <span className="text-xs text-red-500 mt-1">Deduction: -₹{parseFloat(payslip.deduction).toLocaleString('en-IN')}</span>
                   )}
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setViewPayslip(payslip)}
+                    className="p-2 rounded-full hover:bg-opacity-20 transition-colors"
+                    style={{ backgroundColor: themeColors.primaryLight }}
+                    title="View Details"
+                  >
+                    <Eye size={18} style={{ color: themeColors.primary }} />
+                  </button>
+                  <button
+                    onClick={() => toast.success("Downloading payslip...")}
+                    className="p-2 rounded-full hover:bg-opacity-20 transition-colors"
+                    style={{ backgroundColor: themeColors.primaryLight }}
+                    title="Download PDF"
+                  >
+                    <Download size={18} style={{ color: themeColors.primary }} />
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 text-center">
+          <div className="p-4 rounded-full mb-4" style={{ backgroundColor: themeColors.cardHover }}>
+            <FileSpreadsheet size={48} style={{ color: themeColors.textMuted }} />
+          </div>
+          <h3 className="text-lg font-medium mb-2" style={{ color: themeColors.textSecondary }}>
+            No Payslips Found
+          </h3>
+          <p className="max-w-md" style={{ color: themeColors.textMuted }}>
+            Your payslips will appear here once they are generated by the finance department.
+          </p>
+        </div>
+      )}
+
+      {/* View Payslip Modal */}
+      {viewPayslip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h2 className="text-xl font-bold dark:text-white">Payslip Details</h2>
+              <button onClick={() => setViewPayslip(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Employee</p>
+                  <p className="font-semibold dark:text-gray-200">{userData.fullName}</p>
+                  <p className="text-sm text-gray-500">{userData.employeeCode}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Period</p>
+                  <p className="font-semibold dark:text-gray-200">{viewPayslip.month}/{viewPayslip.year}</p>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-300">Basic Salary</span>
+                  <span className="font-medium dark:text-white">₹{parseFloat(viewPayslip.basicSalary).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Attendance</span>
+                  <span>{viewPayslip.presentDays} / {viewPayslip.workingDays} Days</span>
+                </div>
+                <div className="flex justify-between text-red-500">
+                  <span>Deductions (Unpaid Leaves: {viewPayslip.unpaidLeaves})</span>
+                  <span>-₹{parseFloat(viewPayslip.deduction).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-3 flex justify-between items-center">
+                  <span className="font-bold text-lg dark:text-white">Net Salary</span>
+                  <span className="font-bold text-xl text-green-600 dark:text-green-400">₹{parseFloat(viewPayslip.netSalary).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t dark:border-gray-700 flex justify-end gap-3">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              >
+                <FileText size={18} /> Print
+              </button>
+              <button
+                onClick={() => setViewPayslip(null)}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Personal Documents Section
+  const renderPersonalDocuments = () => (
+    <div
+      className="rounded-lg p-6 border mb-6"
+      style={{
+        backgroundColor: themeColors.cardBackground,
+        borderColor: themeColors.borderDivider,
+      }}
+    >
+      <h1
+        className="text-2xl font-bold mb-6"
+        style={{ color: themeColors.textPrimary }}
+      >
+        Personal Documents
+      </h1>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search documents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg border bg-transparent focus:ring-2 focus:ring-opacity-50 outline-none transition-all"
+            style={{
+              borderColor: themeColors.borderDivider,
+              color: themeColors.textPrimary,
+              '--tw-ring-color': themeColors.primary
+            }}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+          {['all', 'identification', 'education', 'contract', 'other'].map(category => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${selectedCategory === category
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              style={selectedCategory === category ? { backgroundColor: themeColors.primary } : {}}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filteredDocuments.length > 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border overflow-hidden" style={{ borderColor: themeColors.borderDivider, backgroundColor: themeColors.cardBackground }}>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b" style={{ borderColor: themeColors.borderDivider }}>
+                <th className="p-4 font-semibold text-sm" style={{ color: themeColors.textSecondary }}>Document Name</th>
+                <th className="p-4 font-semibold text-sm hidden md:table-cell" style={{ color: themeColors.textSecondary }}>Category</th>
+                <th className="p-4 font-semibold text-sm hidden md:table-cell" style={{ color: themeColors.textSecondary }}>Upload Date</th>
+                <th className="p-4 font-semibold text-sm hidden sm:table-cell" style={{ color: themeColors.textSecondary }}>Size</th>
+                <th className="p-4 font-semibold text-sm text-right" style={{ color: themeColors.textSecondary }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocuments.map((doc) => (
+                <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" style={{ borderColor: themeColors.borderDivider }}>
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                        <FileText size={20} />
+                      </div>
+                      <div>
+                        <p className="font-medium" style={{ color: themeColors.textPrimary }}>{doc.name}</p>
+                        <p className="text-xs md:hidden" style={{ color: themeColors.textSecondary }}>{doc.category}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4 hidden md:table-cell">
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                      {doc.category}
+                    </span>
+                  </td>
+                  <td className="p-4 text-sm hidden md:table-cell" style={{ color: themeColors.textPrimary }}>
+                    {new Date(doc.uploadDate).toLocaleDateString()}
+                  </td>
+                  <td className="p-4 text-sm hidden sm:table-cell" style={{ color: themeColors.textSecondary }}>
+                    {doc.size || "2.5 MB"}
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="View"
+                      >
+                        <Eye size={18} style={{ color: themeColors.info }} />
+                      </button>
+                      <button
+                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Download"
+                      >
+                        <Download size={18} style={{ color: themeColors.success }} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 text-center">
+          <div className="p-4 rounded-full mb-4" style={{ backgroundColor: themeColors.cardHover }}>
+            <FileText size={48} style={{ color: themeColors.textMuted }} />
+          </div>
+          <h3 className="text-lg font-medium mb-2" style={{ color: themeColors.textSecondary }}>
+            No Documents Found
+          </h3>
+          <p className="max-w-md" style={{ color: themeColors.textMuted }}>
+            {searchQuery ? `No documents matching "${searchQuery}"` : "You haven't uploaded any documents yet."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+
+
+  // Today's Tasks Section
+  const TodaysTasksSection = () => (
+    <div
+      className="rounded-xl border transition-shadow hover:shadow-sm"
+      style={{
+        backgroundColor: themeColors.cardBackground,
+        borderColor: themeColors.borderDivider,
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-5 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: themeColors.borderDivider }}
+      >
+        <h3
+          className="text-lg font-semibold tracking-tight"
+          style={{ color: themeColors.textPrimary }}
+        >
+          Today’s Tasks
+        </h3>
+
+        <button
+          onClick={() => setShowNewTaskModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium shadow-sm transition hover:shadow"
+          style={{
+            backgroundColor: themeColors.primary,
+            color: "#FFFFFF",
+          }}
+        >
+          <Plus size={16} />
+          New Task
+        </button>
+      </div>
+
+      {/* Task List */}
+      <div className="p-5 space-y-3">
+        {tasks.map((task) => (
+          <div
+            key={task.id}
+            onClick={() => handleTaskComplete(task.id)}
+            onMouseEnter={() => setHoveredItem(task.id)}
+            onMouseLeave={() => setHoveredItem(null)}
+            className="flex gap-3 p-4 rounded-lg border cursor-pointer transition hover:shadow-sm"
+            style={{
+              backgroundColor: themeColors.cardHover,
+              borderColor: themeColors.borderDivider,
+            }}
+          >
+            {/* Checkbox */}
+            <div className="mt-0.5 flex-shrink-0">
+              {task.completed ? (
+                <CheckSquare size={20} style={{ color: themeColors.success }} />
+              ) : (
+                <Square size={20} style={{ color: themeColors.textMuted }} />
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4
+                    className={`text-sm font-medium ${task.completed ? "line-through" : ""
+                      }`}
+                    style={{
+                      color: task.completed
+                        ? themeColors.textMuted
+                        : themeColors.textPrimary,
+                    }}
+                  >
+                    {task.title}
+                  </h4>
+
+                  <p
+                    className="mt-1 text-sm leading-relaxed"
+                    style={{ color: themeColors.textSecondary }}
+                  >
+                    {task.description}
+                  </p>
+
+                  {/* Meta */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <span
+                      className="px-2 py-0.5 rounded text-xs font-medium"
+                      style={{
+                        backgroundColor:
+                          task.project === "Alpha"
+                            ? themeColors.primaryLight
+                            : task.project === "Beta"
+                              ? themeColors.infoBg
+                              : themeColors.warningBg,
+                        color:
+                          task.project === "Alpha"
+                            ? themeColors.primary
+                            : task.project === "Beta"
+                              ? themeColors.info
+                              : themeColors.warning,
+                      }}
+                    >
+                      {task.project}
+                    </span>
+
+                    <span
+                      className="px-2 py-0.5 rounded text-xs font-medium capitalize"
+                      style={{
+                        backgroundColor:
+                          task.priority === "high"
+                            ? themeColors.dangerBg
+                            : task.priority === "medium"
+                              ? themeColors.warningBg
+                              : themeColors.successBg,
+                        color:
+                          task.priority === "high"
+                            ? themeColors.danger
+                            : task.priority === "medium"
+                              ? themeColors.warning
+                              : themeColors.success,
+                      }}
+                    >
+                      {task.priority}
+                    </span>
+
+                    <span
+                      className="text-xs"
+                      style={{ color: themeColors.textMuted }}
+                    >
+                      {task.time}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hover Icon */}
+                {hoveredItem === task.id && (
+                  <ChevronRight
+                    size={16}
+                    style={{ color: themeColors.textMuted }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
+
 
   // Enhanced Calendar Section with Interactive Date Details
   const CalendarSection = () => {
@@ -2467,84 +2928,7 @@ const EmployeeDashboard = () => {
         </div>
 
         {/* Today's Summary */}
-        <div
-          className="rounded-lg p-6 border transform hover:scale-[1.002] transition-all duration-300"
-          style={{
-            backgroundColor: themeColors.cardBackground,
-            borderColor: themeColors.borderDivider,
-          }}
-        >
-          <h3
-            className="text-lg font-semibold mb-4"
-            style={{ color: themeColors.textPrimary }}
-          >
-            Today's Summary
-          </h3>
-          <div className="space-y-3">
-            {[
-              {
-                label: "Work Duration",
-                value: "8h 30m",
-                color: themeColors.textPrimary,
-                icon: Clock,
-              },
-              {
-                label: "Overtime",
-                value: "+30m",
-                color: themeColors.success,
-                icon: TrendingUp,
-              },
-              {
-                label: "Break Time",
-                value: "1h 0m",
-                color: themeColors.warning,
-                icon: Coffee,
-              },
-              {
-                label: "Productivity",
-                value: "92%",
-                color: themeColors.info,
-                icon: Zap,
-              },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="p-3 rounded-lg hover:scale-[1.02] transition-transform group flex items-center justify-between"
-                style={{ backgroundColor: themeColors.cardHover }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "translateX(4px)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "translateX(0)")
-                }
-              >
-                <div className="flex items-center">
-                  <item.icon
-                    size={16}
-                    className="mr-2"
-                    style={{ color: item.color }}
-                  />
-                  <span
-                    className="text-sm"
-                    style={{ color: themeColors.textSecondary }}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-                <span
-                  className="font-medium flex items-center"
-                  style={{ color: item.color }}
-                >
-                  {item.value}
-                  <ChevronRight
-                    size={12}
-                    className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TodaysSummary />
       </div>
     </div>
   );
@@ -2894,397 +3278,6 @@ const EmployeeDashboard = () => {
     </div>
   );
 
-  // Payslips Section
-  const renderPayslips = () => (
-    <div className="space-y-6">
-      <div
-        className="rounded-lg p-6 border transform hover:scale-[1.002] transition-all duration-300"
-        style={{
-          backgroundColor: themeColors.cardBackground,
-          borderColor: themeColors.borderDivider,
-        }}
-      >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div>
-            <h1
-              className="text-2xl font-bold mb-2"
-              style={{ color: themeColors.textPrimary }}
-            >
-              Salary & Payslips
-            </h1>
-            <p style={{ color: themeColors.textSecondary }}>
-              Access and download your salary slips
-            </p>
-          </div>
-          <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="px-3 py-1.5 rounded border text-sm hover:scale-105 transition-transform"
-              style={{
-                backgroundColor: themeColors.cardBackground,
-                borderColor: themeColors.borderDivider,
-                color: themeColors.textPrimary,
-              }}
-            >
-              <option value={2024}>2024</option>
-              <option value={2023}>2023</option>
-              <option value={2022}>2022</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Salary Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          {
-            title: "Monthly Salary",
-            amount: "$5,250.00",
-            description: "Gross Amount",
-            color: themeColors.primary,
-            icon: CreditCard,
-          },
-          {
-            title: "Net Salary",
-            amount: "$4,587.50",
-            description: "After deductions",
-            color: themeColors.info,
-            icon: Wallet,
-          },
-          {
-            title: "YTD Earnings",
-            amount: "$58,350.00",
-            description: "Year to Date",
-            color: themeColors.success,
-            icon: TrendingUp,
-          },
-        ].map((item, index) => (
-          <div
-            key={index}
-            className="rounded-lg p-5 border transform hover:scale-[1.02] transition-all duration-300 group"
-            style={{
-              backgroundColor: themeColors.cardBackground,
-              borderColor: themeColors.borderDivider,
-            }}
-          >
-            <div className="flex items-center mb-3">
-              <div
-                className="p-2 rounded-lg mr-3 transform group-hover:rotate-12 transition-transform"
-                style={{ backgroundColor: themeColors.cardHover }}
-              >
-                <item.icon size={20} style={{ color: item.color }} />
-              </div>
-              <h3
-                className="text-lg font-semibold"
-                style={{ color: themeColors.textPrimary }}
-              >
-                {item.title}
-              </h3>
-            </div>
-            <div className="text-center">
-              <div
-                className="text-2xl font-bold mb-1"
-                style={{ color: item.color }}
-              >
-                {item.amount}
-              </div>
-              <div
-                className="text-sm"
-                style={{ color: themeColors.textSecondary }}
-              >
-                {item.description}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Payslips Grid */}
-      <div
-        className="rounded-lg border transform hover:scale-[1.002] transition-all duration-300"
-        style={{
-          backgroundColor: themeColors.cardBackground,
-          borderColor: themeColors.borderDivider,
-        }}
-      >
-        <div
-          className="p-5 border-b"
-          style={{ borderColor: themeColors.borderDivider }}
-        >
-          <h3
-            className="text-lg font-semibold"
-            style={{ color: themeColors.textPrimary }}
-          >
-            Payslips - {selectedYear}
-          </h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPayslips.map((payslip) => (
-              <div
-                key={payslip.id}
-                className="rounded-lg p-4 border transform hover:scale-[1.02] transition-all duration-300 group"
-                style={{
-                  backgroundColor: themeColors.cardBackground,
-                  borderColor: themeColors.borderDivider,
-                }}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div
-                      className="font-bold"
-                      style={{ color: themeColors.textPrimary }}
-                    >
-                      {payslip.month}
-                    </div>
-                    <div
-                      className="text-xs"
-                      style={{ color: themeColors.textSecondary }}
-                    >
-                      Processed on {payslip.date}
-                    </div>
-                  </div>
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs transform group-hover:scale-110 transition-transform"
-                    style={{
-                      backgroundColor: themeColors.successBg,
-                      color: themeColors.success,
-                    }}
-                  >
-                    {payslip.status}
-                  </span>
-                </div>
-
-                <div className="mb-4">
-                  <div
-                    className="text-xl font-bold mb-1"
-                    style={{ color: themeColors.success }}
-                  >
-                    {payslip.amount}
-                  </div>
-                  <div
-                    className="text-xs"
-                    style={{ color: themeColors.textSecondary }}
-                  >
-                    Gross Salary
-                  </div>
-                </div>
-
-                <div className="flex space-x-2">
-                  <button
-                    className="flex-1 py-1.5 rounded text-sm font-medium flex items-center justify-center hover:scale-105 transition-transform group"
-                    style={{
-                      backgroundColor: themeColors.primary,
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    <Eye
-                      className="mr-1 group-hover:animate-bounce"
-                      size={14}
-                    />
-                    View
-                  </button>
-                  <button
-                    className="flex-1 py-1.5 rounded text-sm font-medium flex items-center justify-center hover:scale-105 transition-transform group"
-                    style={{
-                      backgroundColor: themeColors.cardHover,
-                      color: themeColors.textPrimary,
-                    }}
-                  >
-                    <Download
-                      className="mr-1 group-hover:animate-bounce"
-                      size={14}
-                    />
-                    Download
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Personal Documents Section
-  const renderPersonalDocuments = () => (
-    <div className="space-y-6">
-      <div
-        className="rounded-lg p-6 border transform hover:scale-[1.002] transition-all duration-300"
-        style={{
-          backgroundColor: themeColors.cardBackground,
-          borderColor: themeColors.borderDivider,
-        }}
-      >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div>
-            <h1
-              className="text-2xl font-bold mb-2"
-              style={{ color: themeColors.textPrimary }}
-            >
-              Personal Documents
-            </h1>
-            <p style={{ color: themeColors.textSecondary }}>
-              Access your personal and employment documents
-            </p>
-          </div>
-          <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2"
-                size={16}
-                style={{ color: themeColors.textMuted }}
-              />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search documents..."
-                className="pl-9 pr-3 py-1.5 rounded border text-sm w-full md:w-56 hover:scale-105 transition-transform"
-                style={{
-                  backgroundColor: themeColors.cardBackground,
-                  borderColor: themeColors.borderDivider,
-                  color: themeColors.textPrimary,
-                }}
-              />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-1.5 rounded border text-sm hover:scale-105 transition-transform"
-              style={{
-                backgroundColor: themeColors.cardBackground,
-                borderColor: themeColors.borderDivider,
-                color: themeColors.textPrimary,
-              }}
-            >
-              <option value="all">All Categories</option>
-              <option value="employment">Employment</option>
-              <option value="personal">Personal</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Documents Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredDocuments.map((doc) => (
-          <div
-            key={doc.id}
-            className="rounded-lg p-4 border transform hover:scale-[1.03] transition-all duration-300 group"
-            style={{
-              backgroundColor: themeColors.cardBackground,
-              borderColor: themeColors.borderDivider,
-            }}
-          >
-            <div className="flex items-center mb-3">
-              <div
-                className="p-2 rounded-lg mr-3 transform group-hover:rotate-12 transition-transform"
-                style={{
-                  backgroundColor:
-                    doc.category === "employment"
-                      ? themeColors.primaryLight
-                      : themeColors.infoBg,
-                }}
-              >
-                <FileSpreadsheet
-                  size={18}
-                  style={{
-                    color:
-                      doc.category === "employment"
-                        ? themeColors.primary
-                        : themeColors.info,
-                  }}
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div
-                  className="text-xs capitalize truncate"
-                  style={{ color: themeColors.textSecondary }}
-                >
-                  {doc.category}
-                </div>
-                <div
-                  className="font-medium text-sm truncate"
-                  style={{ color: themeColors.textPrimary }}
-                >
-                  {doc.type}
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <h4
-                className="font-medium text-sm mb-1 truncate"
-                style={{ color: themeColors.textPrimary }}
-              >
-                {doc.name}
-              </h4>
-              <div
-                className="text-xs"
-                style={{ color: themeColors.textSecondary }}
-              >
-                Uploaded: {doc.date}
-              </div>
-              <div
-                className="text-xs"
-                style={{ color: themeColors.textSecondary }}
-              >
-                Size: {doc.size}
-              </div>
-            </div>
-
-            <div className="flex space-x-2">
-              <button
-                className="flex-1 py-1.5 rounded text-xs font-medium flex items-center justify-center hover:scale-105 transition-transform group"
-                style={{
-                  backgroundColor: themeColors.cardHover,
-                  color: themeColors.textPrimary,
-                }}
-              >
-                <Eye className="mr-1 group-hover:animate-bounce" size={12} />
-                View
-              </button>
-              <button
-                className="flex-1 py-1.5 rounded text-xs font-medium flex items-center justify-center hover:scale-105 transition-transform group"
-                style={{
-                  backgroundColor: themeColors.cardHover,
-                  color: themeColors.textPrimary,
-                }}
-              >
-                <Download
-                  className="mr-1 group-hover:animate-bounce"
-                  size={12}
-                />
-                Download
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredDocuments.length === 0 && (
-        <div className="text-center py-8 transform hover:scale-105 transition-transform">
-          <FileSpreadsheet
-            className="mx-auto mb-3 animate-pulse"
-            size={40}
-            style={{ color: themeColors.textMuted }}
-          />
-          <h3
-            className="text-md font-medium mb-1"
-            style={{ color: themeColors.textSecondary }}
-          >
-            No documents found
-          </h3>
-          <p className="text-sm" style={{ color: themeColors.textMuted }}>
-            Try adjusting your search or filter
-          </p>
-        </div>
-      )}
-    </div>
-  );
-
   // Render Modals
   const renderModals = () => (
     <>
@@ -3337,9 +3330,12 @@ const EmployeeDashboard = () => {
                       }}
                       required
                     >
-                      <option value="casual">Casual Leave</option>
-                      <option value="sick">Sick Leave</option>
-                      <option value="earned">Earned Leave</option>
+                      <option value="">Select Leave Type</option>
+                      {leaveTypes.map((type) => (
+                        <option key={type.id || type.code} value={type.code || type.name}>
+                          {type.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -3856,3 +3852,4 @@ const EmployeeDashboard = () => {
 };
 
 export default EmployeeDashboard;
+

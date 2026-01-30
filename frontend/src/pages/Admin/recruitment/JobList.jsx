@@ -1,84 +1,69 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FiSearch, FiFilter, FiBriefcase, FiUsers, FiClock, FiEdit2, FiEye, FiTrash2, FiTrendingUp } from "react-icons/fi";
+import jobService from "../../../services/jobService";
+import { toast } from "react-hot-toast";
 
 const JobList = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [departmentFilter, setDepartmentFilter] = useState("All");
 
-  const jobs = [
-    { 
-      id: 1, 
-      title: "Frontend Developer", 
-      department: "IT", 
-      type: "Full-time",
-      location: "Mumbai, Remote",
-      applicants: 24,
-      status: "Active",
-      postedDate: "2024-11-15",
-      deadline: "2024-12-15",
-    },
-    { 
-      id: 2, 
-      title: "HR Executive", 
-      department: "HR", 
-      type: "Full-time",
-      location: "Delhi",
-      applicants: 18,
-      status: "Active",
-      postedDate: "2024-11-10",
-      deadline: "2024-12-10",
-    },
-    { 
-      id: 3, 
-      title: "Senior Accountant", 
-      department: "Finance", 
-      type: "Full-time",
-      location: "Bangalore",
-      applicants: 12,
-      status: "Closed",
-      postedDate: "2024-10-28",
-      deadline: "2024-11-28",
-    },
-    { 
-      id: 4, 
-      title: "Marketing Manager", 
-      department: "Marketing", 
-      type: "Contract",
-      location: "Remote",
-      applicants: 8,
-      status: "Draft",
-      postedDate: "2024-11-05",
-      deadline: "2024-12-05",
-    },
-    { 
-      id: 5, 
-      title: "DevOps Engineer", 
-      department: "IT", 
-      type: "Full-time",
-      location: "Pune",
-      applicants: 15,
-      status: "Active",
-      postedDate: "2024-11-20",
-      deadline: "2024-12-20",
-    },
-  ];
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = jobs
-    .filter(job => 
-      job.title.toLowerCase().includes(search.toLowerCase().trim()) ||
-      job.department.toLowerCase().includes(search.toLowerCase().trim())
-    )
-    .filter(job => 
-      statusFilter === "All" ? true : job.status === statusFilter
-    )
-    .filter(job => 
-      departmentFilter === "All" ? true : job.department === departmentFilter
-    );
+  /* Update fetchJobs to use API filters */
+  useEffect(() => {
+    fetchJobs();
+  }, [statusFilter, departmentFilter, search]); // Search is usually client side debounced, or server side. 
+
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      const filters = {};
+      if (statusFilter !== "All") filters.status = statusFilter;
+      if (departmentFilter !== "All") filters.department = departmentFilter;
+
+      const data = await jobService.getJobs(filters);
+      setJobs(data);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+      toast.error("Failed to load jobs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteJob = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this job posting?")) return;
+    try {
+      await jobService.deleteJob(id);
+      toast.success("Job deleted successfully");
+      fetchJobs(); // Refetch to ensure sync
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      toast.error("Failed to delete job");
+    }
+  };
+
+  // Stats calculation
+  const totalJobs = jobs.filter(j => j.status === 'Active').length;
+  // Note: applications might be undefined if not included, but service includes it.
+  const allApplications = jobs.flatMap(job => job.applications || []);
+  const totalApplicants = allApplications.length;
+  const totalInterviews = allApplications.filter(a => a.status === 'Interview').length;
+  const totalHired = allApplications.filter(a => a.status === 'Hired').length;
+  const hiringRate = totalApplicants > 0 ? Math.round((totalHired / totalApplicants) * 100) : 0;
+
+  // Client-side search filtering
+  const filtered = jobs.filter(job =>
+    job.title.toLowerCase().includes(search.toLowerCase().trim()) ||
+    job.department.toLowerCase().includes(search.toLowerCase().trim())
+  );
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case "Active": return "bg-gradient-to-r from-emerald-500 to-green-500 text-white";
       case "Closed": return "bg-gradient-to-r from-rose-500 to-red-500 text-white";
       case "Draft": return "bg-gradient-to-r from-slate-500 to-slate-600 text-white";
@@ -87,7 +72,7 @@ const JobList = () => {
   };
 
   const getDepartmentColor = (department) => {
-    switch(department) {
+    switch (department) {
       case "IT": return "bg-gradient-to-r from-cyan-500 to-blue-500";
       case "HR": return "bg-gradient-to-r from-pink-500 to-rose-500";
       case "Finance": return "bg-gradient-to-r from-emerald-500 to-green-500";
@@ -103,7 +88,7 @@ const JobList = () => {
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
             <div>
@@ -136,7 +121,7 @@ const JobList = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400">Active Jobs</p>
-                    <h3 className="text-3xl font-bold text-white mt-2">8</h3>
+                    <h3 className="text-3xl font-bold text-white mt-2">{totalJobs}</h3>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
                     <FiBriefcase className="w-6 h-6 text-white" />
@@ -151,7 +136,7 @@ const JobList = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400">Total Applicants</p>
-                    <h3 className="text-3xl font-bold text-white mt-2">124</h3>
+                    <h3 className="text-3xl font-bold text-white mt-2">{totalApplicants}</h3>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
                     <FiUsers className="w-6 h-6 text-white" />
@@ -166,7 +151,7 @@ const JobList = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400">Interviews</p>
-                    <h3 className="text-3xl font-bold text-white mt-2">18</h3>
+                    <h3 className="text-3xl font-bold text-white mt-2">{totalInterviews}</h3>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                     <FiClock className="w-6 h-6 text-white" />
@@ -181,7 +166,7 @@ const JobList = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400">Hiring Rate</p>
-                    <h3 className="text-3xl font-bold text-white mt-2">68%</h3>
+                    <h3 className="text-3xl font-bold text-white mt-2">{hiringRate}%</h3>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                     <FiTrendingUp className="w-6 h-6 text-white" />
@@ -232,10 +217,7 @@ const JobList = () => {
                 <option value="Finance" className="bg-slate-800">Finance</option>
                 <option value="Marketing" className="bg-slate-800">Marketing</option>
               </select>
-              <button className="flex items-center gap-2 px-4 py-3 bg-slate-800/50 border border-white/20 rounded-lg hover:bg-slate-700/50 text-white">
-                <FiFilter className="w-4 h-4" />
-                More Filters
-              </button>
+
             </div>
           </div>
         </div>
@@ -280,7 +262,7 @@ const JobList = () => {
                         <p className="font-medium text-white">{job.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
-                            {job.type}
+                            {job.jobType || job.type}
                           </span>
                           <span className="text-xs text-slate-400">{job.location}</span>
                         </div>
@@ -294,8 +276,8 @@ const JobList = () => {
                     <td className="p-4 border-b border-white/10">
                       <div className="flex items-center gap-2">
                         <FiUsers className="w-4 h-4 text-slate-400" />
-                        <span className="font-medium text-white">{job.applicants}</span>
-                        <Link 
+                        <span className="font-medium text-white">{job.applications?.length || 0}</span>
+                        <Link
                           to={`/admin/recruitment/applications?job=${job.id}`}
                           className="text-xs text-cyan-400 hover:text-cyan-300"
                         >
@@ -304,17 +286,16 @@ const JobList = () => {
                       </div>
                     </td>
                     <td className="p-4 border-b border-white/10">
-                      <p className="text-white">{job.postedDate}</p>
+                      <p className="text-white">{new Date(job.createdAt).toLocaleDateString()}</p>
                     </td>
                     <td className="p-4 border-b border-white/10">
                       <div className="flex items-center gap-2">
                         <FiClock className="w-4 h-4 text-slate-400" />
-                        <span className={`font-medium ${
-                          new Date(job.deadline) < new Date() && job.status === "Active"
-                            ? "text-rose-400"
-                            : "text-white"
-                        }`}>
-                          {job.deadline}
+                        <span className={`font-medium ${new Date(job.deadline) < new Date() && job.status === "Active"
+                          ? "text-rose-400"
+                          : "text-white"
+                          }`}>
+                          {new Date(job.deadline).toLocaleDateString()}
                         </span>
                       </div>
                     </td>
@@ -340,7 +321,10 @@ const JobList = () => {
                         >
                           <FiEdit2 className="w-4 h-4" />
                         </Link>
-                        <button className="p-2 rounded-lg hover:bg-slate-700/50 text-rose-400 hover:text-rose-300 transition-colors">
+                        <button
+                          onClick={() => handleDeleteJob(job.id)}
+                          className="p-2 rounded-lg hover:bg-slate-700/50 text-rose-400 hover:text-rose-300 transition-colors"
+                        >
                           <FiTrash2 className="w-4 h-4" />
                         </button>
                       </div>

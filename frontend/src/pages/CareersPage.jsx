@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, MapPin, Briefcase, DollarSign, 
+import {
+  Search, MapPin, Briefcase, DollarSign,
   Heart, Globe, Award, Users as UsersIcon,
   ArrowRight, Upload, Mail, Phone, FileText,
   CheckCircle, Clock, Home, Linkedin, Github,
   ExternalLink
 } from 'lucide-react';
+import LiteHRLogo from '../images/LiteHR_logo.png';
+import { toast } from 'react-hot-toast';
+import jobService from '../services/jobService';
 
 export default function CareersPage() {
   const navigate = useNavigate();
-  
-  // Mock database for storing applications (in real app, use backend API)
-  const [applications, setApplications] = useState(() => {
-    const saved = localStorage.getItem('litehr_applications');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
+
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [applicationForm, setApplicationForm] = useState({
     name: '',
     email: '',
@@ -32,98 +32,20 @@ export default function CareersPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
-  const careerPositions = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      department: "Engineering",
-      location: "Remote",
-      type: "Full-time",
-      salary: "$90,000 - $120,000",
-      description: "Build amazing user interfaces with React and modern web technologies for our HR platform.",
-      requirements: [
-        "3+ years experience with React",
-        "Strong JavaScript/TypeScript skills",
-        "Experience with Tailwind CSS",
-        "Knowledge of REST APIs"
-      ]
-    },
-    {
-      id: 2,
-      title: "HR Product Manager",
-      department: "Product",
-      location: "New York, NY",
-      type: "Full-time",
-      salary: "$110,000 - $140,000",
-      description: "Lead product strategy and development for our HR management platform.",
-      requirements: [
-        "5+ years in product management",
-        "Experience with HR/SAAS products",
-        "Strong analytical skills",
-        "Agile/Scrum experience"
-      ]
-    },
-    {
-      id: 3,
-      title: "UX/UI Designer",
-      department: "Design",
-      location: "San Francisco, CA",
-      type: "Full-time",
-      salary: "$85,000 - $110,000",
-      description: "Design intuitive and beautiful interfaces for HR professionals.",
-      requirements: [
-        "Portfolio of design work",
-        "Experience with Figma/Adobe XD",
-        "User research experience",
-        "Understanding of design systems"
-      ]
-    },
-    {
-      id: 4,
-      title: "Backend Engineer",
-      department: "Engineering",
-      location: "Remote",
-      type: "Full-time",
-      salary: "$100,000 - $130,000",
-      description: "Build scalable backend systems and APIs for HR automation.",
-      requirements: [
-        "Node.js/Python experience",
-        "Database design (SQL/NoSQL)",
-        "API design and security",
-        "Cloud platform experience (AWS/Azure)"
-      ]
-    },
-    {
-      id: 5,
-      title: "Customer Success Manager",
-      department: "Operations",
-      location: "Chicago, IL",
-      type: "Full-time",
-      salary: "$75,000 - $95,000",
-      description: "Ensure customer satisfaction and help clients maximize our HR platform.",
-      requirements: [
-        "3+ years in customer success",
-        "HR/SAAS experience",
-        "Excellent communication skills",
-        "Problem-solving mindset"
-      ]
-    },
-    {
-      id: 6,
-      title: "Sales Executive",
-      department: "Sales",
-      location: "Remote",
-      type: "Full-time",
-      salary: "$80,000 + Commission",
-      description: "Drive sales and grow our customer base for LiteHR.",
-      requirements: [
-        "Proven sales track record",
-        "B2B SAAS experience",
-        "Strong negotiation skills",
-        "Self-motivated and driven"
-      ]
-    },
-  ];
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const data = await jobService.getPublicJobs();
+        setJobs(data);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+        toast.error("Failed to load open positions");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
   const benefits = [
     { icon: <DollarSign size={24} />, title: "Competitive Salary", description: "Above industry average compensation with regular reviews" },
@@ -162,45 +84,57 @@ export default function CareersPage() {
     }
   };
 
-  const handleSubmitApplication = (e) => {
+  const handleSubmitApplication = async (e) => {
     e.preventDefault();
-    
+
     if (!applicationForm.resume) {
-      alert('Please upload your resume');
+      toast.error('Please upload your resume');
       return;
     }
 
-    // Create application object
-    const newApplication = {
-      id: Date.now(),
-      ...applicationForm,
-      appliedDate: new Date().toISOString(),
-      status: 'pending',
-      jobDetails: selectedJob,
-      timestamp: new Date().toISOString()
-    };
+    if (!selectedJob) {
+      toast.error('Please select a position');
+      return;
+    }
 
-    // Save to localStorage (in real app, send to backend API)
-    const updatedApplications = [...applications, newApplication];
-    setApplications(updatedApplications);
-    localStorage.setItem('litehr_applications', JSON.stringify(updatedApplications));
+    try {
+      const formData = new FormData();
+      formData.append('jobId', selectedJob.id);
+      formData.append('name', applicationForm.name);
+      formData.append('email', applicationForm.email);
+      formData.append('phone', applicationForm.phone);
+      formData.append('resume', applicationForm.resume);
+      formData.append('coverLetter', applicationForm.coverLetter);
+      formData.append('linkedin', applicationForm.linkedin);
+      formData.append('github', applicationForm.github);
 
-    // Reset form and show success
-    setApplicationForm({
-      name: '',
-      email: '',
-      phone: '',
-      position: '',
-      coverLetter: '',
-      linkedin: '',
-      github: '',
-      resume: null,
-      resumeName: ''
-    });
-    setSelectedJob(null);
-    setShowSuccess(true);
-    
-    setTimeout(() => setShowSuccess(false), 5000);
+      // Additional fields backend might expect/support
+      formData.append('currentCompany', '');
+      formData.append('experience', '');
+
+      await jobService.createJobApplication(formData);
+
+      // Reset form and show success
+      setApplicationForm({
+        name: '',
+        email: '',
+        phone: '',
+        position: '',
+        coverLetter: '',
+        linkedin: '',
+        github: '',
+        resume: null,
+        resumeName: ''
+      });
+      setSelectedJob(null);
+      setShowSuccess(true);
+      toast.success("Application submitted successfully!");
+
+      setTimeout(() => setShowSuccess(false), 5000);
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast.error(error.response?.data?.message || "Failed to submit application");
+    }
   };
 
   return (
@@ -208,26 +142,27 @@ export default function CareersPage() {
       {/* Navigation Bar */}
       <header className="fixed top-0 left-0 w-full h-16 bg-[#0F172A]/90 backdrop-blur-md z-50 px-6 md:px-20 border-b border-[#374151]">
         <div className="flex items-center justify-between h-full">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="h-10 w-10 bg-gradient-to-r from-[#8B5CF6] to-[#10B981] rounded-lg flex items-center justify-center">
-              <Briefcase size={20} />
-            </div>
-            <span className="text-2xl font-semibold tracking-wide">LiteHR Careers</span>
+          <div className="rounded-lg p-2 shadow-sm">
+            <img
+              src={LiteHRLogo}
+              alt="LiteHR"
+              className="h-8 w-auto object-contain"
+            />
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => navigate('/')}
               className="text-sm hover:text-[#8B5CF6] transition flex items-center gap-2"
             >
               <Home size={16} />
               Back to Home
             </button>
-            <button 
+            <button
               onClick={() => navigate('/manager/dashboard')}
               className="bg-[#8B5CF6] hover:bg-[#7C3AED] px-4 py-2 rounded-lg text-sm transition shadow-lg"
             >
-              Employee Login
+              Login
             </button>
           </div>
         </div>
@@ -249,10 +184,10 @@ export default function CareersPage() {
               </span>
             </h1>
             <p className="text-xl text-[#9CA3AF] max-w-3xl mx-auto mb-10">
-              Join our mission to revolutionize HR management. We're looking for passionate 
+              Join our mission to revolutionize HR management. We're looking for passionate
               individuals who want to make an impact on how companies manage their most valuable asset - people.
             </p>
-            <button 
+            <button
               onClick={() => document.getElementById('open-positions').scrollIntoView({ behavior: 'smooth' })}
               className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl transition"
             >
@@ -283,54 +218,88 @@ export default function CareersPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-              {careerPositions.map((job) => (
-                <div key={job.id} className="bg-[#1E293B] rounded-xl p-6 border border-[#374151] hover:border-[#8B5CF6] transition-all hover:shadow-xl group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold group-hover:text-[#8B5CF6] transition">{job.title}</h3>
-                      <p className="text-sm text-[#10B981] font-medium">{job.department}</p>
-                    </div>
-                    <span className="bg-[rgba(139,92,246,0.2)] text-[#8B5CF6] text-xs font-semibold px-3 py-1 rounded-full">
-                      {job.type}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center gap-2 text-[#D1D5DB]">
-                      <MapPin size={16} className="text-[#9CA3AF]" />
-                      <span>{job.location}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[#D1D5DB]">
-                      <DollarSign size={16} className="text-[#9CA3AF]" />
-                      <span>{job.salary}</span>
-                    </div>
-                  </div>
-                  
-                  <p className="text-[#9CA3AF] text-sm mb-4 line-clamp-3">{job.description}</p>
-                  
-                  <div className="mb-6">
-                    <div className="text-sm font-medium text-[#F9FAFB] mb-2">Key Requirements:</div>
-                    <ul className="space-y-1">
-                      {job.requirements.slice(0, 3).map((req, idx) => (
-                        <li key={idx} className="flex items-center gap-2 text-sm text-[#9CA3AF]">
-                          <div className="w-1 h-1 bg-[#8B5CF6] rounded-full"></div>
-                          {req}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleApplyClick(job)}
-                    className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-medium py-3 rounded-lg transition flex items-center justify-center gap-2 group-hover:gap-3"
+            {loading ? (
+              <div className="text-center py-20">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#8B5CF6]"></div>
+                <p className="mt-4 text-[#9CA3AF]">Loading positions...</p>
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="text-center py-20">
+                <Briefcase size={48} className="mx-auto mb-4 text-[#9CA3AF]" />
+                <p className="text-xl text-[#9CA3AF]">No open positions at the moment</p>
+                <p className="text-sm text-[#9CA3AF] mt-2">Check back soon for new opportunities!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+                {jobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="bg-[#1E293B] rounded-xl p-6 border border-[#374151] hover:border-[#8B5CF6] transition-all hover:shadow-xl hover:shadow-[#8B5CF6]/10 group flex flex-col h-full"
                   >
-                    Apply Now
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <h3 className="text-xl font-bold group-hover:text-[#8B5CF6] transition mb-1 line-clamp-2">
+                          {job.title}
+                        </h3>
+                        <p className="text-sm text-[#10B981] font-medium">
+                          {job.department}
+                        </p>
+                      </div>
+                      <span className="bg-[rgba(139,92,246,0.2)] text-[#8B5CF6] text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap flex-shrink-0">
+                        {job.jobType}
+                      </span>
+                    </div>
+
+                    {/* Location and Salary */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-[#D1D5DB]">
+                        <MapPin size={16} className="text-[#9CA3AF] flex-shrink-0" />
+                        <span className="truncate">{job.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#D1D5DB]">
+                        <DollarSign size={16} className="text-[#9CA3AF] flex-shrink-0" />
+                        <span className="truncate">{job.salary}</span>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="mb-4 flex-grow">
+                      <p className="text-[#9CA3AF] text-sm leading-relaxed line-clamp-3">
+                        {job.description}
+                      </p>
+                    </div>
+
+                    {/* Requirements */}
+                    {job.requirements && (
+                      <div className="mb-6 bg-[#111827] rounded-lg p-4 border border-[#374151]">
+                        <div className="text-sm font-semibold text-[#F9FAFB] mb-3 flex items-center gap-2">
+                          <CheckCircle size={14} className="text-[#8B5CF6]" />
+                          Key Requirements
+                        </div>
+                        <ul className="space-y-2">
+                          {job.requirements.split('\n').filter(req => req.trim()).slice(0, 3).map((req, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-[#D1D5DB]">
+                              <div className="w-1.5 h-1.5 bg-[#8B5CF6] rounded-full mt-1.5 flex-shrink-0"></div>
+                              <span className="flex-1">{req.trim()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Apply Button */}
+                    <button
+                      onClick={() => handleApplyClick(job)}
+                      className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 group-hover:gap-3 shadow-lg hover:shadow-xl mt-auto"
+                    >
+                      Apply Now
+                      <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -349,7 +318,7 @@ export default function CareersPage() {
                   <p className="text-[#9CA3AF]">Fill out your application below</p>
                 </div>
               </div>
-              
+
               <form onSubmit={handleSubmitApplication} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -358,49 +327,49 @@ export default function CareersPage() {
                       type="text"
                       required
                       value={applicationForm.name}
-                      onChange={(e) => setApplicationForm({...applicationForm, name: e.target.value})}
+                      onChange={(e) => setApplicationForm({ ...applicationForm, name: e.target.value })}
                       className="w-full bg-[#111827] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                       placeholder="John Doe"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Email Address *</label>
                     <input
                       type="email"
                       required
                       value={applicationForm.email}
-                      onChange={(e) => setApplicationForm({...applicationForm, email: e.target.value})}
+                      onChange={(e) => setApplicationForm({ ...applicationForm, email: e.target.value })}
                       className="w-full bg-[#111827] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                       placeholder="john@example.com"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Phone Number</label>
                     <input
                       type="tel"
                       value={applicationForm.phone}
-                      onChange={(e) => setApplicationForm({...applicationForm, phone: e.target.value})}
+                      onChange={(e) => setApplicationForm({ ...applicationForm, phone: e.target.value })}
                       className="w-full bg-[#111827] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                       placeholder="+1 (555) 123-4567"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Position *</label>
                     <select
                       required
                       value={applicationForm.position}
                       onChange={(e) => {
-                        const job = careerPositions.find(j => j.title === e.target.value);
+                        const job = jobs.find(j => j.title === e.target.value);
                         setSelectedJob(job);
-                        setApplicationForm({...applicationForm, position: e.target.value});
+                        setApplicationForm({ ...applicationForm, position: e.target.value });
                       }}
                       className="w-full bg-[#111827] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     >
                       <option value="">Select a position</option>
-                      {careerPositions.map(job => (
+                      {jobs.map(job => (
                         <option key={job.id} value={job.title}>{job.title}</option>
                       ))}
                     </select>
@@ -413,7 +382,7 @@ export default function CareersPage() {
                       <input
                         type="url"
                         value={applicationForm.linkedin}
-                        onChange={(e) => setApplicationForm({...applicationForm, linkedin: e.target.value})}
+                        onChange={(e) => setApplicationForm({ ...applicationForm, linkedin: e.target.value })}
                         className="w-full bg-[#111827] border border-[#374151] rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                         placeholder="https://linkedin.com/in/yourprofile"
                       />
@@ -427,26 +396,26 @@ export default function CareersPage() {
                       <input
                         type="url"
                         value={applicationForm.github}
-                        onChange={(e) => setApplicationForm({...applicationForm, github: e.target.value})}
+                        onChange={(e) => setApplicationForm({ ...applicationForm, github: e.target.value })}
                         className="w-full bg-[#111827] border border-[#374151] rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                         placeholder="https://github.com/yourusername"
                       />
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Cover Letter *</label>
                   <textarea
                     required
                     value={applicationForm.coverLetter}
-                    onChange={(e) => setApplicationForm({...applicationForm, coverLetter: e.target.value})}
+                    onChange={(e) => setApplicationForm({ ...applicationForm, coverLetter: e.target.value })}
                     rows="5"
                     className="w-full bg-[#111827] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     placeholder="Tell us about yourself, your experience, and why you're interested in this position..."
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Resume/CV *</label>
                   <div className="space-y-4">
@@ -455,8 +424,8 @@ export default function CareersPage() {
                         <Upload className="mx-auto mb-3 text-[#9CA3AF]" size={28} />
                         <div className="text-[#D1D5DB] font-medium mb-1">Click to upload your resume</div>
                         <div className="text-sm text-[#9CA3AF]">PDF, DOC, DOCX up to 5MB</div>
-                        <input 
-                          type="file" 
+                        <input
+                          type="file"
                           className="hidden"
                           accept=".pdf,.doc,.docx"
                           onChange={handleFileUpload}
@@ -464,7 +433,7 @@ export default function CareersPage() {
                         />
                       </div>
                     </label>
-                    
+
                     {applicationForm.resumeName && (
                       <div className="flex items-center justify-between bg-[#111827] rounded-lg px-4 py-3 border border-[#374151]">
                         <div className="flex items-center gap-3">
@@ -474,9 +443,9 @@ export default function CareersPage() {
                             <div className="text-sm text-[#9CA3AF]">Ready to submit</div>
                           </div>
                         </div>
-                        <button 
+                        <button
                           type="button"
-                          onClick={() => setApplicationForm({...applicationForm, resume: null, resumeName: ''})}
+                          onClick={() => setApplicationForm({ ...applicationForm, resume: null, resumeName: '' })}
                           className="text-sm text-red-400 hover:text-red-300"
                         >
                           Remove
@@ -485,7 +454,7 @@ export default function CareersPage() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="pt-4">
                   <button
                     type="submit"
@@ -538,7 +507,7 @@ export default function CareersPage() {
             <p className="text-xl mb-8 opacity-90">
               Don't see the perfect role? We're always looking for talented individuals.
             </p>
-            <button 
+            <button
               onClick={() => document.getElementById('apply-form').scrollIntoView({ behavior: 'smooth' })}
               className="bg-white text-[#8B5CF6] hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition shadow-lg hover:shadow-xl inline-flex items-center gap-2"
             >
@@ -559,12 +528,12 @@ export default function CareersPage() {
               </div>
               <span className="text-xl font-semibold">LiteHR Careers</span>
             </div>
-            
+
             <p className="text-sm text-[#9CA3AF] text-center">
               © 2025 LiteHR. All rights reserved. | Privacy Policy | Terms of Service
             </p>
-            
-            <button 
+
+            <button
               onClick={() => navigate('/manager/dashboard')}
               className="text-sm text-[#9CA3AF] hover:text-white transition flex items-center gap-2"
             >

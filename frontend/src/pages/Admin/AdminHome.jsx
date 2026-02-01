@@ -48,6 +48,7 @@ const AdminHome = () => {
   const [activeJobsCount, setActiveJobsCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAllActivities, setShowAllActivities] = useState(false);
 
   const departmentChartRef = useRef(null);
   const attendanceChartRef = useRef(null);
@@ -748,7 +749,11 @@ const AdminHome = () => {
             <h2 className={`text-lg font-semibold ${theme.text.primary}`}>
               Department Performance
             </h2>
-            <button className="text-sm text-purple-600 dark:text-purple-400 hover:underline">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/departments")}
+              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+            >
               View Details
             </button>
           </div>
@@ -798,7 +803,11 @@ const AdminHome = () => {
             <h2 className={`text-lg font-semibold ${theme.text.primary}`}>
               Monthly Attendance Trends
             </h2>
-            <button className="text-sm text-purple-600 dark:text-purple-400 hover:underline">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/attendance")}
+              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+            >
               View Details
             </button>
           </div>
@@ -848,7 +857,11 @@ const AdminHome = () => {
             <h2 className={`text-lg font-semibold ${theme.text.primary}`}>
               Employee Distribution
             </h2>
-            <button className="text-sm text-purple-600 dark:text-purple-400 hover:underline">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/employees/distribution")}
+              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+            >
               View Details
             </button>
           </div>
@@ -888,7 +901,11 @@ const AdminHome = () => {
             <h2 className={`text-lg font-semibold ${theme.text.primary}`}>
               Leave Statistics
             </h2>
-            <button className="text-sm text-purple-600 dark:text-purple-400 hover:underline">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/leaves")}
+              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+            >
               View Details
             </button>
           </div>
@@ -1116,6 +1133,8 @@ const AdminHome = () => {
             </p>
           </div>
           <button
+            type="button"
+            onClick={() => setShowAllActivities(true)}
             className={`text-sm text-purple-600 dark:text-purple-400 hover:underline px-4 py-2 ${darkMode ? "bg-gray-900/50" : "bg-gray-100"} rounded-lg border ${theme.border.primary} hover:border-purple-500/30 transition-colors`}
           >
             View All Activities
@@ -1136,6 +1155,53 @@ const AdminHome = () => {
                     {getStatusIcon(activity.status)}
                   </div>
                 </div>
+                  {/* All Activities Modal (in-page) */}
+                  {showAllActivities && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                      <div
+                        className="absolute inset-0 bg-black opacity-50"
+                        onClick={() => setShowAllActivities(false)}
+                      />
+                      <div className={`relative w-11/12 max-w-3xl ${theme.bg.secondary} rounded-lg p-6 border ${theme.border.primary} shadow-lg z-10`}>
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className={`text-lg font-semibold ${theme.text.primary}`}>All Activities</h3>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllActivities(false)}
+                            className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+                          >
+                            Close
+                          </button>
+                        </div>
+
+                        <div className="max-h-80 overflow-auto space-y-3">
+                          {(dashboard?.recentWorklogs && dashboard.recentWorklogs.length > 0
+                            ? dashboard.recentWorklogs
+                            : recentActivities
+                          ).map((w, i) => (
+                            <div
+                              key={i}
+                              className={`p-3 rounded-lg border ${theme.border.primary} ${darkMode ? "bg-gray-900/50" : "bg-white"}`}
+                            >
+                              <div className="flex justify-between">
+                                <div>
+                                  <div className={`font-medium ${theme.text.primary}`}>
+                                    {w.employee?.fullName || w.user || "Unknown"}
+                                  </div>
+                                  <div className={`text-sm ${theme.text.secondary}`}>
+                                    {w.description || w.action || "Activity"}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {w.date || w.time || "-"}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 <div>
                   <p className={`font-medium ${theme.text.primary}`}>
                     {activity.user}

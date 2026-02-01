@@ -247,7 +247,7 @@ const Settings = () => {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Settings Sidebar */}
           <div className="lg:w-64">
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 lg:mb-0">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 mb-6 lg:mb-0">
               <nav className="space-y-1">
                 {tabs.map(tab => (
                   <button
@@ -300,7 +300,7 @@ const Settings = () => {
 
           {/* Settings Content */}
           <div className="flex-1">
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-lg bg-blue-100">
                   {tabs.find(t => t.id === activeTab)?.icon}

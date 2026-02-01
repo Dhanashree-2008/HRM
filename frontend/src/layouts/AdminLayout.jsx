@@ -227,44 +227,65 @@ const AdminLayout = ({ children, logout }) => {
   ];
 
   const [notifications, setNotifications] = useState([]);
+  // Fetch notifications (extracted so other handlers can call it)
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.slice(0, 5).map(n => {
+          const diff = Date.now() - new Date(n.createdAt).getTime();
+          const mins = Math.floor(diff / 60000);
+          let timeStr = "Just now";
+          if (mins > 0 && mins < 60) timeStr = `${mins} min ago`;
+          else if (mins >= 60 && mins < 1440) timeStr = `${Math.floor(mins / 60)} hr ago`;
+          else if (mins >= 1440) timeStr = `${Math.floor(mins / 1440)} day ago`;
+
+          return {
+            id: n.id,
+            text: n.message || n.title,
+            time: timeStr,
+            unread: !n.isRead
+          };
+        });
+        setNotifications(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  };
 
   useEffect(() => {
-    const fetchNotifications = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      try {
-        const res = await fetch("/api/notifications", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const mapped = data.slice(0, 5).map(n => {
-            const diff = Date.now() - new Date(n.createdAt).getTime();
-            const mins = Math.floor(diff / 60000);
-            let timeStr = "Just now";
-            if (mins > 0 && mins < 60) timeStr = `${mins} min ago`;
-            else if (mins >= 60 && mins < 1440) timeStr = `${Math.floor(mins / 60)} hr ago`;
-            else if (mins >= 1440) timeStr = `${Math.floor(mins / 1440)} day ago`;
-
-            return {
-              id: n.id,
-              text: n.message || n.title,
-              time: timeStr,
-              unread: !n.isRead
-            };
-          });
-          setNotifications(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to fetch notifications", err);
-      }
-    };
-
     fetchNotifications();
     // Poll every 30 seconds to keep updated
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [location.pathname]); // Update when navigating too
+
+  // Toggle notifications panel and mark all as read when opening
+  const handleToggleNotifications = async () => {
+    const opening = !notificationsOpen;
+    setNotificationsOpen(opening);
+    if (opening) {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        // mark all as read on backend
+        await fetch('/api/notifications/read-all', {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error('Failed to mark notifications read', err);
+      }
+      // Refresh local list
+      fetchNotifications();
+    }
+  };
 
   // Helper function to check if a path is active
   const isActivePath = (itemPath, currentPath) => {
@@ -561,7 +582,7 @@ const AdminLayout = ({ children, logout }) => {
             {/* Notifications */}
             <div className="relative">
               <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                onClick={handleToggleNotifications}
                 className={`p-2 rounded-lg ${sidebarHoverBg} transition-colors relative`}
               >
                 <IoMdNotificationsOutline className={`w-5 h-5 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`} />

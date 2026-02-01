@@ -180,7 +180,7 @@ const UploadDocument = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Document Details Form */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 mb-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 rounded-lg bg-blue-100">
                 <FileText size={24} className="text-blue-600" />
@@ -301,7 +301,7 @@ const UploadDocument = () => {
 
         {/* File Upload Section */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 mb-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 rounded-lg bg-purple-100">
                 <Upload size={24} className="text-purple-600" />

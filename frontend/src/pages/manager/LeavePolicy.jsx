@@ -204,7 +204,7 @@ const LeavePolicy = () => {
 
         {/* Policy Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Total Leave Types</p>
@@ -216,7 +216,7 @@ const LeavePolicy = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Avg. Leave Days</p>
@@ -230,7 +230,7 @@ const LeavePolicy = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Require Approval</p>
@@ -244,7 +244,7 @@ const LeavePolicy = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Last Updated</p>
@@ -261,7 +261,7 @@ const LeavePolicy = () => {
       {/* Policies Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {policies.map(policy => (
-          <div key={policy.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div key={policy.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-800">{policy.type}</h3>

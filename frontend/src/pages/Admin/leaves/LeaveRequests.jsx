@@ -321,58 +321,7 @@ const LeaveRequests = () => {
           </div>
         </div>
 
-        {/* Leave Types Bar Chart */}
-        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className={`text-lg font-semibold ${textPrimary}`}>Leave Types</h3>
-              <p className={`text-sm ${textSecondary}`}>Distribution by leave type</p>
-            </div>
-            <FiBarChart2 className={`w-6 h-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-          </div>
-          <div className="h-64" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={leaveTypeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#E5E7EB"} />
-                <XAxis dataKey="name" stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <YAxis stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" name="Count" radius={[4, 4, 0, 0]}>
-                  {leaveTypeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Second Row Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Department Comparison */}
-        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className={`text-lg font-semibold ${textPrimary}`}>Department Analysis</h3>
-              <p className={`text-sm ${textSecondary}`}>Pending vs Approved by department</p>
-            </div>
-            <FiBarChart2 className={`w-6 h-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-          </div>
-          <div className="h-64" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={departmentLeaveData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#E5E7EB"} />
-                <XAxis dataKey="name" stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <YAxis stroke={darkMode ? "#9CA3AF" : "#6B7280"} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Bar dataKey="pending" name="Pending" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="approved" name="Approved" fill="#10B981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+       
 
         {/* Monthly Trends */}
         <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>

@@ -1,6 +1,6 @@
 // src/pages/manager/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   CheckCircle,
   XCircle,
@@ -32,10 +32,10 @@ import { managerService } from '../../services/managerService';
 const Dashboard = () => {
   const navigate = useNavigate();
   const [showExportOptions, setShowExportOptions] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  const { isDarkMode = true } = useOutletContext() || {};
 
   // Get theme colors based on dark mode - matching homepage
-  const themeColors = darkMode ? {
+  const themeColors = isDarkMode ? {
     primary: '#8b5cf6',      // Purple from homepage
     secondary: '#10b981',    // Green from homepage
     accent: '#3b82f6',       // Blue from homepage
@@ -59,44 +59,7 @@ const Dashboard = () => {
     border: '#e2e8f0',       // Light border
   };
 
-  // Get dark mode from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('litehr-theme');
-    const isDark = savedTheme === 'dark' || savedTheme === null;
-    setDarkMode(isDark);
-
-    // Apply theme to document
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
-    }
-
-    // Listen for theme changes from MainLayout
-    const handleStorageChange = () => {
-      const updatedTheme = localStorage.getItem('litehr-theme');
-      const isDarkUpdated = updatedTheme === 'dark' || updatedTheme === null;
-      setDarkMode(isDarkUpdated);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    // Also check periodically
-    const interval = setInterval(() => {
-      const savedTheme = localStorage.getItem('litehr-theme');
-      const isDark = savedTheme === 'dark' || savedTheme === null;
-      if (isDark !== darkMode) {
-        setDarkMode(isDark);
-      }
-    }, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [darkMode]);
+  // Theme is provided by layout via Outlet context (`isDarkMode`)
 
   // State for dashboard data
   const [statsData, setStatsData] = useState({
@@ -166,7 +129,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className={`p-4 md:p-6 min-h-screen transition-colors duration-300 ${darkMode ? 'dark' : ''}`} style={{ backgroundColor: themeColors.background }}>
+    <div className={`p-4 md:p-6 min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`} style={{ backgroundColor: themeColors.background }}>
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold transition-colors duration-300" style={{ color: themeColors.text }}>Dashboard</h1>

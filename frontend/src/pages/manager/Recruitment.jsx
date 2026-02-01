@@ -195,7 +195,7 @@ export default function Recruitment() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-600 text-sm">Total Applications</p>
@@ -207,7 +207,7 @@ export default function Recruitment() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-600 text-sm">Pending Review</p>
@@ -221,7 +221,7 @@ export default function Recruitment() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-600 text-sm">Shortlisted</p>
@@ -235,7 +235,7 @@ export default function Recruitment() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-600 text-sm">Hired</p>
@@ -251,7 +251,7 @@ export default function Recruitment() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />

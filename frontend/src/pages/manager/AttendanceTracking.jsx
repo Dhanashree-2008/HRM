@@ -118,8 +118,9 @@ const AttendanceTracking = () => {
   const statusOptions = ['All', 'Present', 'Absent', 'Late', 'Half-Day'];
 
   const filteredData = attendanceData.filter(record => {
-    if (selectedDepartment !== 'all' && record.department !== selectedDepartment) return false;
-    if (selectedStatus !== 'all' && record.status !== selectedStatus) return false;
+    // Allow both 'all' and 'All Departments' values from selects
+    if (selectedDepartment !== 'all' && selectedDepartment.toLowerCase() !== 'all departments' && record.department && record.department.toLowerCase() !== selectedDepartment.toLowerCase()) return false;
+    if (selectedStatus !== 'all' && selectedStatus.toLowerCase() !== 'all' && record.status && record.status.toLowerCase() !== selectedStatus.toLowerCase()) return false;
     if (searchTerm && !record.employee.toLowerCase().includes(searchTerm.toLowerCase()) &&
       !record.department.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
@@ -128,13 +129,18 @@ const AttendanceTracking = () => {
   // Calculate overall attendance percentage to match dashboard (92%)
   const calculateOverallAttendance = () => {
     const totalRecords = attendanceData.length;
-    const presentRecords = attendanceData.filter(r => r.status === 'present' || r.status === 'half-day' || r.status === 'late').length;
+    if (!totalRecords) return 0;
+    const presentRecords = attendanceData.filter(r => {
+      const s = (r.status || '').toLowerCase();
+      return s === 'present' || s === 'half-day' || s === 'late';
+    }).length;
     return Math.round((presentRecords / totalRecords) * 100);
   };
 
   // Calculate average attendance score to match employee management page
   const calculateAverageAttendanceScore = () => {
-    const totalScore = attendanceData.reduce((sum, record) => sum + record.attendanceScore, 0);
+    if (!attendanceData.length) return 0;
+    const totalScore = attendanceData.reduce((sum, record) => sum + (record.attendanceScore || 0), 0);
     return Math.round(totalScore / attendanceData.length);
   };
 

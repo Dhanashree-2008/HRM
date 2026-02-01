@@ -73,7 +73,7 @@ const EmployeeManagement = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white rounded-xl shadow-sm p-4" style={{ backgroundColor: '#FFFFFF' }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
@@ -111,30 +111,30 @@ const EmployeeManagement = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm p-4" style={{ backgroundColor: '#FFFFFF' }}>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4">
           <p className="text-sm text-slate-600">Total Members</p>
           <p className="text-2xl font-bold text-slate-800 mt-2">{employees.length}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4" style={{ backgroundColor: '#FFFFFF' }}>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4">
           <p className="text-sm text-slate-600">Active</p>
           <p className="text-2xl font-bold text-green-600 mt-2">{employees.filter(e => e.status === 'active').length}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4" style={{ backgroundColor: '#FFFFFF' }}>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4">
           <p className="text-sm text-slate-600">Departments</p>
           <p className="text-2xl font-bold text-blue-600 mt-2">{[...new Set(employees.map(e => e.department))].length}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4" style={{ backgroundColor: '#FFFFFF' }}>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4">
           <p className="text-sm text-slate-600">Avg. Attendance</p>
           <p className="text-2xl font-bold text-purple-600 mt-2">--%</p>
         </div>
       </div>
 
       {/* Employee Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: '#FFFFFF' }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-slate-50" style={{ backgroundColor: '#F8FAFC' }}>
+              <tr className="bg-slate-50 dark:bg-slate-700">
                 <th className="py-3 px-4 text-left text-sm font-medium text-slate-700">Employee</th>
                 <th className="py-3 px-4 text-left text-sm font-medium text-slate-700">Contact</th>
                 <th className="py-3 px-4 text-left text-sm font-medium text-slate-700">Department</th>
@@ -153,7 +153,7 @@ const EmployeeManagement = () => {
                       </div>
                       <div>
                         <p className="font-medium text-slate-800">{employee.name}</p>
-                        <p className="text-sm text-slate-600">ID: EMP{employee.id.toString().substring(0, 6)}</p>
+                        <p className="text-sm text-slate-600">{employee.id ? `ID: EMP${String(employee.id).substring(0, 6)}` : 'ID: N/A'}</p>
                       </div>
                     </div>
                   </td>

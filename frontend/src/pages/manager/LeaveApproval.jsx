@@ -162,7 +162,7 @@ const LeaveApproval = () => {
           rawStartDate: req.fromDate,
           dates: `${formatDate(req.fromDate)} - ${formatDate(req.toDate)}`,
           days: daysCount,
-          status: req.status.toLowerCase(),
+          status: (req.status || '').toLowerCase(),
           reason: req.reason,
           appliedOn: formatDate(req.createdAt),
           leaveBalance: balances,
@@ -414,7 +414,7 @@ const LeaveApproval = () => {
             </button>
 
             {showExportOptions && (
-              <div className="absolute right-0 top-14 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden">
+              <div className="absolute right-0 top-14 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden">
                 <button
                   onClick={() => handleExportData('csv')}
                   className="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-medium text-slate-700 transition border-b border-slate-50"

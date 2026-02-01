@@ -312,7 +312,8 @@ const EmployeeHierarchy = () => {
           <div 
             key={employee.id} 
             className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-            style={{ marginLeft: `${employee.level * 20}px` }}
+            // Cap indent on small screens to avoid horizontal overflow
+            style={{ marginLeft: `${Math.min(employee.level, 3) * 20}px` }}
           >
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">

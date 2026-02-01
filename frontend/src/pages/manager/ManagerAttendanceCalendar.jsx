@@ -74,7 +74,7 @@ const ManagerAttendanceCalendar = ({ onBack }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 animate-in fade-in duration-300">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 animate-in fade-in duration-300">
       <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-4">
             {onBack && (

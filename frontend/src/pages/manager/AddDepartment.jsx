@@ -168,11 +168,16 @@ const AddDepartment = () => {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               >
                 <option value="">Select Department Head (Optional)</option>
-                {employees.map(emp => (
-                  <option key={emp.employee?.id} value={emp.employee?.id}>
-                    {emp.employee?.fullName} {emp.employee?.designation ? `- ${emp.employee.designation}` : ""}
-                  </option>
-                ))}
+                {employees.map(emp => {
+                  const id = emp?.employee?.id || emp?.id || '';
+                  const name = emp?.employee?.fullName || emp?.fullName || emp?.name || 'Unknown';
+                  const designation = emp?.employee?.designation || emp?.designation || '';
+                  return (
+                    <option key={id || Math.random()} value={id}>
+                      {name} {designation ? `- ${designation}` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

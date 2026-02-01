@@ -98,7 +98,7 @@ export default function SecureVault() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
@@ -130,7 +130,7 @@ export default function SecureVault() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

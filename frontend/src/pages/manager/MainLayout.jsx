@@ -110,21 +110,41 @@ export default function MainLayout({ logout }) {
   // Initialize theme on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('litehr-theme');
-    const isDark = savedTheme === 'dark';
+    const isDark = savedTheme === 'dark' || savedTheme === null;
     setDarkMode(isDark);
     applyTheme(isDark);
   }, []);
 
+  // Sync theme when changed in another tab/window
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === 'litehr-theme') {
+        const updated = e.newValue;
+        const isDarkUpdated = updated === 'dark' || updated === null;
+        setDarkMode(isDarkUpdated);
+        applyTheme(isDarkUpdated);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   // Apply theme to document
   const applyTheme = (isDark) => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-      document.body.style.backgroundColor = '#0f172a';
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
-      document.body.style.backgroundColor = '#f8fafc';
+    try {
+      // Explicitly set/remove the class to ensure Tailwind dark: variants apply
+      document.documentElement.classList.toggle('dark', !!isDark);
+      // Some components use body class as well; keep it in sync
+      document.body.classList.toggle('dark', !!isDark);
+      // Also set a data attribute to help debugging and non-tailwind consumers
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      document.body.style.backgroundColor = isDark ? '#0f172a' : '#f8fafc';
+      // Debug info
+      // eslint-disable-next-line no-console
+      console.debug('[MainLayout] applyTheme ->', { isDark, htmlClass: document.documentElement.className });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to apply theme', err);
     }
   };
 
@@ -132,8 +152,14 @@ export default function MainLayout({ logout }) {
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
-    localStorage.setItem('litehr-theme', newDarkMode ? 'dark' : 'light');
+    try {
+      localStorage.setItem('litehr-theme', newDarkMode ? 'dark' : 'light');
+    } catch (err) {
+      // ignore storage errors
+    }
     applyTheme(newDarkMode);
+    // eslint-disable-next-line no-console
+    console.debug('[MainLayout] toggleDarkMode ->', { darkMode: newDarkMode });
   };
 
   // Toggle section dropdown
@@ -445,7 +471,7 @@ export default function MainLayout({ logout }) {
   }, [darkMode]);
 
   return (
-    <div className={`min-h-screen flex flex-col ${darkMode ? 'dark bg-gray-900 text-gray-100' : 'bg-slate-50 text-gray-900'}`}>
+    <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-slate-50 text-gray-900'}`}>
       {/* Top Navigation Bar - Fixed */}
       <header className={`h-16 border-b flex-shrink-0 sticky top-0 z-50 shadow-sm ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-200'
         }`}>
@@ -639,8 +665,8 @@ export default function MainLayout({ logout }) {
           w-64 border-r
           transform transition-transform duration-300 flex-shrink-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static
-          fixed lg:relative top-16 lg:top-0 left-0 h-[calc(100vh-4rem)] lg:h-full z-40
+          lg:translate-x-0 lg:relative
+          fixed top-16 lg:top-0 left-0 h-[calc(100vh-4rem)] lg:h-full z-40
           flex flex-col shadow-sm sidebar-container
           ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-200'}
         `}>
@@ -802,7 +828,7 @@ export default function MainLayout({ logout }) {
             <div className="main-content-container main-content-scrollbar">
               <div className={`p-4 md:p-6 ${darkMode ? 'bg-gray-900' : 'bg-slate-50'
                 }`}>
-                <Outlet context={{ darkMode }} />
+                <Outlet context={{ user, isDarkMode: darkMode }} />
               </div>
             </div>
           </div>

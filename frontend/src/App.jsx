@@ -74,6 +74,8 @@ import AddJob from "./pages/Admin/recruitment/AddJob";
 import ApplicationsList from "./pages/Admin/recruitment/ApplicationsList";
 import ApplicationDetails from "./pages/Admin/recruitment/ApplicationDetails";
 import CvSummarizer from "./pages/Admin/recruitment/CvSummarizer";
+import JobDetails from "./pages/Admin/recruitment/JobDetails";
+
 
 /* Vault (Admin) */
 import VaultList from "./pages/Admin/vault/VaultList";
@@ -256,6 +258,8 @@ function App() {
           {/* Recruitment */}
           <Route path="recruitment/jobs" element={<JobList />} />
           <Route path="recruitment/add-job" element={<AddJob />} />
+          <Route path="recruitment/edit-job/:id" element={<AddJob />} />
+          <Route path="recruitment/jobs/:id" element={<JobDetails />} />
           <Route path="recruitment/applications" element={<ApplicationsList />} />
           <Route path="recruitment/applications/:id" element={<ApplicationDetails />} />
           <Route path="recruitment/cv-summarizer" element={<CvSummarizer />} />

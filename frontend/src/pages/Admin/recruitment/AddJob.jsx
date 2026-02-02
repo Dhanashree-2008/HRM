@@ -5,10 +5,11 @@ import { Link } from "react-router-dom";
 
 import { toast } from "react-hot-toast";
 import jobService from "../../../services/jobService";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const AddJob = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const [formData, setFormData] = useState({
     title: "",
     department: "",
@@ -27,19 +28,54 @@ const AddJob = () => {
     status: "Draft"
   });
 
+  useEffect(() => {
+    if (id) {
+      const fetchJob = async () => {
+        try {
+          const data = await jobService.getJobById(id);
+          // Format date to YYYY-MM-DD for input[type=date]
+          const formattedData = {
+            ...data,
+            title: data.title || "",
+            department: data.department || "",
+            jobType: data.jobType || data.type || "Full-time",
+            location: data.location || "",
+            salaryRangeMin: data.salaryRangeMin || "",
+            salaryRangeMax: data.salaryRangeMax || "",
+            experienceMin: data.experienceMin || "",
+            experienceMax: data.experienceMax || "",
+            description: data.description || "",
+            requirements: data.requirements || "",
+            responsibilities: data.responsibilities || "",
+            skills: data.skills || "",
+            openings: data.openings || "1",
+            status: data.status || "Draft",
+            deadline: data.deadline ? new Date(data.deadline).toISOString().split('T')[0] : ""
+          };
+          setFormData(formattedData);
+        } catch (error) {
+          console.error("Error fetching job details:", error);
+          toast.error("Failed to load job details");
+        }
+      };
+      fetchJob();
+    }
+  }, [id]);
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors({ ...errors, [name]: "" });
+      setErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
 
-  const handleTextAreaChange = (name, value) => {
-    setFormData({ ...formData, [name]: value });
+  const handleTextAreaChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const validateForm = () => {
@@ -59,8 +95,13 @@ const AddJob = () => {
     if (Object.keys(validationErrors).length === 0) {
       try {
         setIsSubmitting(true);
-        await jobService.createJob(formData);
-        toast.success("Job posting created successfully!");
+        if (id) {
+          await jobService.updateJob(id, formData);
+          toast.success("Job posting updated successfully!");
+        } else {
+          await jobService.createJob(formData);
+          toast.success("Job posting created successfully!");
+        }
         navigate("/admin/recruitment/jobs");
       } catch (error) {
         console.error("Error creating job:", error);
@@ -112,10 +153,10 @@ const AddJob = () => {
             </Link>
             <div>
               <h1 className="text-4xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-purple-300">
-                Create Job Posting
+                {id ? "Edit Job Posting" : "Create Job Posting"}
               </h1>
               <p className="text-slate-300">
-                Post a new job opening and attract qualified candidates.
+                {id ? "Update the job details and requirements." : "Post a new job opening and attract qualified candidates."}
               </p>
             </div>
           </div>
@@ -215,7 +256,6 @@ const AddJob = () => {
                       value={formData.salaryRangeMin}
                       onChange={handleChange}
                       placeholder="Min"
-                      defaultValue={0}
                       className="flex-1 h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
                     />
                     <input
@@ -224,7 +264,6 @@ const AddJob = () => {
                       value={formData.salaryRangeMax}
                       onChange={handleChange}
                       placeholder="Max"
-                      defaultValue={0}
                       className="flex-1 h-11 px-4 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
                     />
                   </div>
@@ -300,9 +339,10 @@ const AddJob = () => {
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
             <h3 className="text-lg font-semibold text-white mb-4">Job Description *</h3>
             <textarea
+              name="description"
               rows={5}
               value={formData.description}
-              onChange={(e) => handleTextAreaChange("description", e.target.value)}
+              onChange={handleTextAreaChange}
               placeholder="Describe the role, team, and benefits..."
               className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
             />
@@ -312,9 +352,10 @@ const AddJob = () => {
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
             <h3 className="text-lg font-semibold text-white mb-4">Requirements *</h3>
             <textarea
+              name="requirements"
               rows={5}
               value={formData.requirements}
-              onChange={(e) => handleTextAreaChange("requirements", e.target.value)}
+              onChange={handleTextAreaChange}
               placeholder="Required qualifications, experience, tools..."
               className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
             />
@@ -325,9 +366,10 @@ const AddJob = () => {
             <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
               <h3 className="text-lg font-semibold text-white mb-4">Responsibilities</h3>
               <textarea
+                name="responsibilities"
                 rows={5}
                 value={formData.responsibilities}
-                onChange={(e) => handleTextAreaChange("responsibilities", e.target.value)}
+                onChange={handleTextAreaChange}
                 placeholder="Key duties and responsibilities..."
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
               />
@@ -336,9 +378,10 @@ const AddJob = () => {
             <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700/50 shadow-lg">
               <h3 className="text-lg font-semibold text-white mb-4">Skills</h3>
               <textarea
+                name="skills"
                 rows={5}
                 value={formData.skills}
-                onChange={(e) => handleTextAreaChange("skills", e.target.value)}
+                onChange={handleTextAreaChange}
                 placeholder="e.g. Node.js, SQL, REST APIs, Problem Solving"
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500/30"
               />

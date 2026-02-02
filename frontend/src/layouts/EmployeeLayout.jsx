@@ -94,6 +94,7 @@ const EmployeeLayout = ({ logout }) => {
 
   const menuItems = [
     { label: "Dashboard", icon: <FiGrid />, path: "/employee/dashboard" },
+    { label: "My Tasks", icon: <FiClipboard />, path: "/employee/tasks" }, // Added Tasks
     { label: "Mark Attendance", icon: <FiClock />, path: "/employee/attendance" },
     { label: "Leave Requests", icon: <FiCalendar />, path: "/employee/leaves" },
     { label: "Worklogs", icon: <FiClipboard />, path: "/employee/worklogs" },

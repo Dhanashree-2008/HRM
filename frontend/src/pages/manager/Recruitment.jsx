@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, Mail, Phone, MapPin, Briefcase, Calendar, FileText, CheckCircle, XCircle, Eye, User, ChevronDown, ExternalLink } from 'lucide-react';
 import { managerService } from '../../services/managerService';
 import { toast } from 'react-hot-toast';
+import { useOutletContext } from 'react-router-dom';
 
 export default function Recruitment() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -10,6 +11,35 @@ export default function Recruitment() {
   const [expandedApplication, setExpandedApplication] = useState(null);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const { isDarkMode = true } = useOutletContext() || {};
+
+  // Theme colors synchronized with Dashboard.jsx
+  const themeColors = isDarkMode ? {
+    primary: '#8b5cf6',      // Purple
+    secondary: '#10b981',    // Green
+    accent: '#3b82f6',       // Blue
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    background: '#0f172a',   // Dark background
+    card: '#1e293b',         // Dark card
+    text: '#f9fafb',         // Light text
+    muted: '#9ca3af',        // Muted text
+    border: '#374151',       // Border color
+    inputBg: '#1e293b',      // Input background
+  } : {
+    primary: '#2563eb',      // Blue
+    secondary: '#10b981',    // Green
+    accent: '#8b5cf6',       // Purple
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    background: '#f8fafc',   // Light slate
+    card: '#ffffff',         // White
+    text: '#1e293b',         // Slate 800
+    muted: '#64748b',        // Slate 500
+    border: '#e2e8f0',       // Light border
+    inputBg: '#ffffff',      // Input background
+  };
 
   // Load applications from API
   useEffect(() => {
@@ -70,14 +100,14 @@ export default function Recruitment() {
     const s = status.toLowerCase();
     switch (s) {
       case 'reviewed':
-      case 'review': return 'bg-blue-100 text-blue-800';
-      case 'shortlisted': return 'bg-purple-100 text-purple-800';
-      case 'hired': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'review': return { bg: `${themeColors.accent}20`, text: themeColors.accent };
+      case 'shortlisted': return { bg: `${themeColors.primary}20`, text: themeColors.primary };
+      case 'hired': return { bg: `${themeColors.secondary}20`, text: themeColors.secondary };
+      case 'rejected': return { bg: `${themeColors.danger}20`, text: themeColors.danger };
       case 'pending':
-      case 'new': return 'bg-yellow-100 text-yellow-800';
-      case 'interview': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-slate-100 text-slate-800';
+      case 'new': return { bg: `${themeColors.warning}20`, text: themeColors.warning };
+      case 'interview': return { bg: `${themeColors.warning}20`, text: themeColors.warning }; // Using warning color for interview as well
+      default: return { bg: `${themeColors.muted}20`, text: themeColors.muted };
     }
   };
 
@@ -99,15 +129,9 @@ export default function Recruitment() {
   // Update application status
   const updateApplicationStatus = async (id, newStatus) => {
     try {
-      // Backend expects PascalCase or specific strings? 
-      // Admin list uses: "Reviewed", "Interview", "Hired", "Rejected", "New"
-      // Manager list buttons: "review" (-> Reviewed), "shortlisted" (-> Interview/Shortlisted?), "hired", "rejected"
-      // Let's map manager UI actions to standard status strings if needed.
-      // Or just pass the string. Let's pass standard strings: 'Reviewed', 'Shortlisted', 'Hired', 'Rejected'.
-
       let backendStatus = newStatus;
       if (newStatus === 'review') backendStatus = 'Reviewed';
-      if (newStatus === 'shortlisted') backendStatus = 'Shortlisted'; // or 'Interview' depending on system
+      if (newStatus === 'shortlisted') backendStatus = 'Shortlisted';
       if (newStatus === 'hired') backendStatus = 'Hired';
       if (newStatus === 'rejected') backendStatus = 'Rejected';
 
@@ -152,10 +176,9 @@ export default function Recruitment() {
   // View resume
   const viewResume = (application) => {
     if (application.resume) {
-      // Construct URL if it's relative
       const url = application.resume.startsWith('http')
         ? application.resume
-        : `http://localhost:5000${application.resume}`; // Assuming local dev or relative path
+        : `http://localhost:5000${application.resume}`;
       window.open(url, '_blank');
     } else {
       toast.error('No resume uploaded');
@@ -168,25 +191,27 @@ export default function Recruitment() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 transition-colors duration-300" style={{ backgroundColor: themeColors.background, minHeight: '100vh', padding: '1.5rem' }}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Recruitment Applications</h1>
-          <p className="text-slate-600">
+          <h1 className="text-2xl font-bold transition-colors duration-300" style={{ color: themeColors.text }}>Recruitment Applications</h1>
+          <p className="transition-colors duration-300" style={{ color: themeColors.muted }}>
             Manage applications from careers page • {applications.length} total applications
           </p>
         </div>
         <div className="flex space-x-3">
           <button
             onClick={exportApplications}
-            className="flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
+            className="flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors duration-300 hover:opacity-80"
+            style={{ borderColor: themeColors.border, color: themeColors.text, backgroundColor: themeColors.card }}
           >
             <Download size={18} />
             <span>Export JSON</span>
           </button>
           <button
             onClick={loadApplications}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors duration-300 hover:opacity-90 text-white"
+            style={{ backgroundColor: themeColors.primary }}
           >
             <span>Refresh</span>
           </button>
@@ -195,81 +220,93 @@ export default function Recruitment() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+        <div className="rounded-xl shadow-sm p-6 transition-colors duration-300" style={{ backgroundColor: themeColors.card, border: `1px solid ${themeColors.border}` }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-600 text-sm">Total Applications</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">{applications.length}</h3>
+              <p className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Total Applications</p>
+              <h3 className="text-2xl font-bold mt-1 transition-colors duration-300" style={{ color: themeColors.text }}>{applications.length}</h3>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FileText className="text-blue-600" size={24} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: `${themeColors.primary}20` }}>
+              <FileText style={{ color: themeColors.primary }} size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+        <div className="rounded-xl shadow-sm p-6 transition-colors duration-300" style={{ backgroundColor: themeColors.card, border: `1px solid ${themeColors.border}` }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-600 text-sm">Pending Review</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">
+              <p className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Pending Review</p>
+              <h3 className="text-2xl font-bold mt-1 transition-colors duration-300" style={{ color: themeColors.text }}>
                 {applications.filter(a => ['new', 'pending'].includes(a.status)).length}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Eye className="text-yellow-600" size={24} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: `${themeColors.warning}20` }}>
+              <Eye style={{ color: themeColors.warning }} size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+        <div className="rounded-xl shadow-sm p-6 transition-colors duration-300" style={{ backgroundColor: themeColors.card, border: `1px solid ${themeColors.border}` }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-600 text-sm">Shortlisted</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">
+              <p className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Shortlisted</p>
+              <h3 className="text-2xl font-bold mt-1 transition-colors duration-300" style={{ color: themeColors.text }}>
                 {applications.filter(a => ['shortlisted', 'interview'].includes(a.status)).length}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <User className="text-purple-600" size={24} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: `${themeColors.accent}20` }}>
+              <User style={{ color: themeColors.accent }} size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+        <div className="rounded-xl shadow-sm p-6 transition-colors duration-300" style={{ backgroundColor: themeColors.card, border: `1px solid ${themeColors.border}` }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-600 text-sm">Hired</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">
+              <p className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Hired</p>
+              <h3 className="text-2xl font-bold mt-1 transition-colors duration-300" style={{ color: themeColors.text }}>
                 {applications.filter(a => a.status === 'hired').length}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="text-green-600" size={24} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: `${themeColors.secondary}20` }}>
+              <CheckCircle style={{ color: themeColors.secondary }} size={24} />
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+      <div className="rounded-xl shadow-sm p-6 transition-colors duration-300" style={{ backgroundColor: themeColors.card, border: `1px solid ${themeColors.border}` }}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors duration-300" style={{ color: themeColors.muted }} size={18} />
             <input
               type="search"
               placeholder="Search by name, email, or position..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300"
+              style={{
+                backgroundColor: themeColors.inputBg,
+                borderColor: themeColors.border,
+                color: themeColors.text,
+                '--tw-ring-color': themeColors.primary
+              }}
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors duration-300" style={{ color: themeColors.muted }} size={18} />
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+                className="pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 appearance-none transition-colors duration-300"
+                style={{
+                  backgroundColor: themeColors.inputBg,
+                  borderColor: themeColors.border,
+                  color: themeColors.text,
+                  '--tw-ring-color': themeColors.primary
+                }}
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending/New</option>
@@ -281,11 +318,17 @@ export default function Recruitment() {
             </div>
 
             <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors duration-300" style={{ color: themeColors.muted }} size={18} />
               <select
                 value={selectedJob}
                 onChange={(e) => setSelectedJob(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+                className="pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 appearance-none transition-colors duration-300"
+                style={{
+                  backgroundColor: themeColors.inputBg,
+                  borderColor: themeColors.border,
+                  color: themeColors.text,
+                  '--tw-ring-color': themeColors.primary
+                }}
               >
                 <option value="all">All Positions</option>
                 {jobPostings.map(job => (
@@ -299,35 +342,35 @@ export default function Recruitment() {
         {/* Applications List */}
         <div className="space-y-4">
           {loading ? (
-            <div className="text-center py-12 text-slate-500">Loading applications...</div>
+            <div className="text-center py-12 transition-colors duration-300" style={{ color: themeColors.muted }}>Loading applications...</div>
           ) : filteredApplications.length > 0 ? (
             filteredApplications.map((application) => (
-              <div key={application.id} className="border border-slate-200 rounded-xl overflow-hidden">
+              <div key={application.id} className="border rounded-xl overflow-hidden transition-colors duration-300" style={{ borderColor: themeColors.border }}>
                 {/* Application Header */}
-                <div className="bg-white p-6">
+                <div className="p-6 transition-colors duration-300" style={{ backgroundColor: themeColors.card }}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <User className="text-blue-600" size={24} />
+                        <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: `${themeColors.primary}20` }}>
+                          <User style={{ color: themeColors.primary }} size={24} />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-lg text-slate-800">{application.name || 'No Name'}</h3>
+                          <h3 className="font-semibold text-lg transition-colors duration-300" style={{ color: themeColors.text }}>{application.name || 'No Name'}</h3>
                           <div className="flex items-center gap-3 mt-1">
                             {application.email && (
-                              <span className="flex items-center gap-1 text-slate-600 text-sm">
+                              <span className="flex items-center gap-1 text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>
                                 <Mail size={14} />
                                 {application.email}
                               </span>
                             )}
                             {application.phone && (
-                              <span className="flex items-center gap-1 text-slate-600 text-sm">
+                              <span className="flex items-center gap-1 text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>
                                 <Phone size={14} />
                                 {application.phone}
                               </span>
                             )}
                             {application.timestamp && (
-                              <span className="flex items-center gap-1 text-slate-600 text-sm">
+                              <span className="flex items-center gap-1 text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>
                                 <Calendar size={14} />
                                 {formatDate(application.timestamp)}
                               </span>
@@ -338,20 +381,26 @@ export default function Recruitment() {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
-                          <div className="text-sm text-slate-500">Applied Position</div>
-                          <div className="font-medium">{application.position || 'General Application'}</div>
+                          <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Applied Position</div>
+                          <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>{application.position || 'General Application'}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-slate-500">Status</div>
+                          <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Status</div>
                           <div className="font-medium">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(application.status || 'pending')}`}>
-                              {getStatusText(application.status || 'pending')}
-                            </span>
+                            {(() => {
+                              const statusStyle = getStatusColor(application.status || 'pending');
+                              return (
+                                <span className="px-3 py-1 rounded-full text-sm font-medium transition-colors duration-300"
+                                  style={{ backgroundColor: statusStyle.bg, color: statusStyle.text }}>
+                                  {getStatusText(application.status || 'pending')}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-slate-500">Contact</div>
-                          <div className="font-medium">{application.phone || 'No phone provided'}</div>
+                          <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Contact</div>
+                          <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>{application.phone || 'No phone provided'}</div>
                         </div>
                       </div>
                     </div>
@@ -360,13 +409,15 @@ export default function Recruitment() {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => toggleExpand(application.id)}
-                          className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg"
+                          className="px-3 py-1 text-sm rounded-lg transition-colors duration-300 hover:opacity-80"
+                          style={{ color: themeColors.accent, backgroundColor: `${themeColors.accent}10` }}
                         >
                           {expandedApplication === application.id ? 'Hide Details' : 'View Details'}
                         </button>
                         <button
                           onClick={() => viewResume(application)}
-                          className="px-3 py-1 text-sm text-green-600 hover:bg-green-50 rounded-lg"
+                          className="px-3 py-1 text-sm rounded-lg transition-colors duration-300 hover:opacity-80"
+                          style={{ color: themeColors.secondary, backgroundColor: `${themeColors.secondary}10` }}
                         >
                           Resume
                         </button>
@@ -378,25 +429,41 @@ export default function Recruitment() {
                   <div className="flex flex-wrap gap-2 mt-4">
                     <button
                       onClick={() => updateApplicationStatus(application.id, 'review')}
-                      className={`px-3 py-1 rounded-lg text-sm ${(application.status || 'pending') === 'reviewed' ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                      className={`px-3 py-1 rounded-lg text-sm transition-colors duration-300 hover:opacity-90`}
+                      style={{
+                        backgroundColor: (application.status || 'pending') === 'reviewed' ? themeColors.accent : `${themeColors.accent}20`,
+                        color: (application.status || 'pending') === 'reviewed' ? 'white' : themeColors.accent
+                      }}
                     >
                       Mark Review
                     </button>
                     <button
                       onClick={() => updateApplicationStatus(application.id, 'shortlisted')}
-                      className={`px-3 py-1 rounded-lg text-sm ${(application.status || 'pending') === 'shortlisted' ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}
+                      className={`px-3 py-1 rounded-lg text-sm transition-colors duration-300 hover:opacity-90`}
+                      style={{
+                        backgroundColor: (application.status || 'pending') === 'shortlisted' ? themeColors.primary : `${themeColors.primary}20`,
+                        color: (application.status || 'pending') === 'shortlisted' ? 'white' : themeColors.primary
+                      }}
                     >
                       Shortlist
                     </button>
                     <button
                       onClick={() => updateApplicationStatus(application.id, 'hired')}
-                      className={`px-3 py-1 rounded-lg text-sm ${(application.status || 'pending') === 'hired' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                      className={`px-3 py-1 rounded-lg text-sm transition-colors duration-300 hover:opacity-90`}
+                      style={{
+                        backgroundColor: (application.status || 'pending') === 'hired' ? themeColors.secondary : `${themeColors.secondary}20`,
+                        color: (application.status || 'pending') === 'hired' ? 'white' : themeColors.secondary
+                      }}
                     >
                       Hire
                     </button>
                     <button
                       onClick={() => updateApplicationStatus(application.id, 'rejected')}
-                      className={`px-3 py-1 rounded-lg text-sm ${(application.status || 'pending') === 'rejected' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                      className={`px-3 py-1 rounded-lg text-sm transition-colors duration-300 hover:opacity-90`}
+                      style={{
+                        backgroundColor: (application.status || 'pending') === 'rejected' ? themeColors.danger : `${themeColors.danger}20`,
+                        color: (application.status || 'pending') === 'rejected' ? 'white' : themeColors.danger
+                      }}
                     >
                       Reject
                     </button>
@@ -405,31 +472,32 @@ export default function Recruitment() {
 
                 {/* Expanded Details */}
                 {expandedApplication === application.id && (
-                  <div className="border-t border-slate-200 bg-slate-50 p-6">
+                  <div className="border-t p-6 transition-colors duration-300" style={{ borderColor: themeColors.border, backgroundColor: isDarkMode ? `${themeColors.background}` : '#f8fafc' }}>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {/* Left Column - Personal Info */}
                       <div className="space-y-4">
                         <div>
-                          <h4 className="font-semibold text-slate-800 mb-2">Contact Information</h4>
+                          <h4 className="font-semibold mb-2 transition-colors duration-300" style={{ color: themeColors.text }}>Contact Information</h4>
                           <div className="space-y-2">
                             <div>
-                              <div className="text-sm text-slate-500">Email</div>
-                              <div className="font-medium">{application.email}</div>
+                              <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Email</div>
+                              <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>{application.email}</div>
                             </div>
                             {application.phone && (
                               <div>
-                                <div className="text-sm text-slate-500">Phone</div>
-                                <div className="font-medium">{application.phone}</div>
+                                <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Phone</div>
+                                <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>{application.phone}</div>
                               </div>
                             )}
                             {application.linkedin && (
                               <div>
-                                <div className="text-sm text-slate-500">LinkedIn</div>
+                                <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>LinkedIn</div>
                                 <a
                                   href={application.linkedin}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline flex items-center gap-1"
+                                  className="hover:underline flex items-center gap-1 transition-colors duration-300"
+                                  style={{ color: themeColors.accent }}
                                 >
                                   {application.linkedin}
                                   <ExternalLink size={12} />
@@ -438,12 +506,13 @@ export default function Recruitment() {
                             )}
                             {application.github && (
                               <div>
-                                <div className="text-sm text-slate-500">GitHub</div>
+                                <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>GitHub</div>
                                 <a
                                   href={application.github}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline flex items-center gap-1"
+                                  className="hover:underline flex items-center gap-1 transition-colors duration-300"
+                                  style={{ color: themeColors.accent }}
                                 >
                                   {application.github}
                                   <ExternalLink size={12} />
@@ -454,16 +523,16 @@ export default function Recruitment() {
                         </div>
 
                         <div>
-                          <h4 className="font-semibold text-slate-800 mb-2">Application Details</h4>
+                          <h4 className="font-semibold mb-2 transition-colors duration-300" style={{ color: themeColors.text }}>Application Details</h4>
                           <div className="space-y-2">
                             <div>
-                              <div className="text-sm text-slate-500">Applied On</div>
-                              <div className="font-medium">{formatDate(application.timestamp)}</div>
+                              <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Applied On</div>
+                              <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>{formatDate(application.timestamp)}</div>
                             </div>
                             {application.appliedDate && (
                               <div>
-                                <div className="text-sm text-slate-500">Submitted Date</div>
-                                <div className="font-medium">{application.appliedDate}</div>
+                                <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>Submitted Date</div>
+                                <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>{application.appliedDate}</div>
                               </div>
                             )}
                           </div>
@@ -473,9 +542,9 @@ export default function Recruitment() {
                       {/* Middle Column - Cover Letter */}
                       <div className="lg:col-span-2">
                         <div>
-                          <h4 className="font-semibold text-slate-800 mb-2">Cover Letter</h4>
-                          <div className="bg-white p-4 rounded-lg border border-slate-200 max-h-60 overflow-y-auto">
-                            <p className="text-slate-700 whitespace-pre-wrap">
+                          <h4 className="font-semibold mb-2 transition-colors duration-300" style={{ color: themeColors.text }}>Cover Letter</h4>
+                          <div className="p-4 rounded-lg border max-h-60 overflow-y-auto transition-colors duration-300" style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }}>
+                            <p className="whitespace-pre-wrap transition-colors duration-300" style={{ color: themeColors.text }}>
                               {application.coverLetter || 'No cover letter provided'}
                             </p>
                           </div>
@@ -483,23 +552,24 @@ export default function Recruitment() {
 
                         {/* Resume Info */}
                         <div className="mt-4">
-                          <h4 className="font-semibold text-slate-800 mb-2">Resume Information</h4>
-                          <div className="bg-white p-4 rounded-lg border border-slate-200">
+                          <h4 className="font-semibold mb-2 transition-colors duration-300" style={{ color: themeColors.text }}>Resume Information</h4>
+                          <div className="p-4 rounded-lg border transition-colors duration-300" style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <FileText size={20} className="text-blue-600" />
+                                <FileText size={20} style={{ color: themeColors.accent }} />
                                 <div>
-                                  <div className="font-medium text-slate-800">
+                                  <div className="font-medium transition-colors duration-300" style={{ color: themeColors.text }}>
                                     {application.resumeName || 'Resume file'}
                                   </div>
-                                  <div className="text-sm text-slate-500">
+                                  <div className="text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>
                                     {application.resume ? 'File uploaded successfully' : 'No resume uploaded'}
                                   </div>
                                 </div>
                               </div>
                               <button
                                 onClick={() => viewResume(application)}
-                                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                                className="px-3 py-1 text-sm rounded-lg transition-colors duration-300 hover:opacity-80"
+                                style={{ backgroundColor: `${themeColors.accent}20`, color: themeColors.accent }}
                               >
                                 View Details
                               </button>
@@ -514,19 +584,19 @@ export default function Recruitment() {
             ))
           ) : (
             <div className="text-center py-12">
-              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search size={40} className="text-slate-400" />
+              <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors duration-300" style={{ backgroundColor: themeColors.card }}>
+                <Search size={40} style={{ color: themeColors.muted }} />
               </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+              <h3 className="text-xl font-semibold mb-2 transition-colors duration-300" style={{ color: themeColors.text }}>
                 {applications.length === 0 ? 'No applications yet' : 'No matching applications'}
               </h3>
-              <p className="text-slate-600">
+              <p className="transition-colors duration-300" style={{ color: themeColors.muted }}>
                 {applications.length === 0
                   ? 'Applications submitted through the careers page will appear here.'
                   : 'Try adjusting your search criteria'}
               </p>
               {applications.length === 0 && (
-                <div className="mt-4 text-sm text-slate-500">
+                <div className="mt-4 text-sm transition-colors duration-300" style={{ color: themeColors.muted }}>
                   <p>Submit applications from the homepage careers section to see them here.</p>
                 </div>
               )}

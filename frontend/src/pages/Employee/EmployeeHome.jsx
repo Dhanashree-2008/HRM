@@ -778,6 +778,8 @@ const EmployeeDashboard = () => {
     switch (activeSection) {
       case "dashboard":
         return renderDashboard();
+      case "tasks":
+        return renderTasks();
       case "attendance":
         return renderAttendance();
       case "worklogs":
@@ -794,6 +796,116 @@ const EmployeeDashboard = () => {
         return renderDashboard();
     }
   };
+
+  // Tasks Section
+  const renderTasks = () => (
+    <div className="space-y-6">
+      <div
+        className="rounded-lg p-6 border mb-6"
+        style={{
+          backgroundColor: themeColors.cardBackground,
+          borderColor: themeColors.borderDivider,
+        }}
+      >
+        <h1
+          className="text-2xl font-bold mb-2"
+          style={{ color: themeColors.textPrimary }}
+        >
+          My Tasks
+        </h1>
+        <p style={{ color: themeColors.textSecondary }}>
+          Manage and track your assigned tasks
+        </p>
+      </div>
+
+      {tasks.length === 0 ? (
+        <div
+          className="rounded-lg border p-12 text-center"
+          style={{
+            backgroundColor: themeColors.cardBackground,
+            borderColor: themeColors.borderDivider,
+          }}
+        >
+          <Target className="w-12 h-12 mx-auto mb-4 opacity-50" style={{ color: themeColors.textMuted }} />
+          <h3 className="text-lg font-medium mb-1" style={{ color: themeColors.textPrimary }}>No tasks assigned</h3>
+          <p style={{ color: themeColors.textSecondary }}>You're all caught up!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              className="rounded-lg border p-4 transition-all hover:shadow-md"
+              style={{
+                backgroundColor: themeColors.cardBackground,
+                borderColor: themeColors.borderDivider,
+              }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium border`}
+                      style={{
+                        backgroundColor: task.priority === 'HIGH' ? themeColors.dangerBg : task.priority === 'MEDIUM' ? themeColors.warningBg : themeColors.successBg,
+                        color: task.priority === 'HIGH' ? themeColors.danger : task.priority === 'MEDIUM' ? themeColors.warning : themeColors.success,
+                        borderColor: 'transparent'
+                      }}
+                    >
+                      {task.priority || 'NORMAL'}
+                    </span>
+                    {task.dueDate && (
+                      <span className="flex items-center text-xs" style={{ color: themeColors.textMuted }}>
+                        <CalendarIcon size={12} className="mr-1" />
+                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="text-lg font-semibold mb-1" style={{ color: themeColors.textPrimary }}>
+                    {task.title}
+                  </h3>
+                  <p className="text-sm mb-3" style={{ color: themeColors.textSecondary }}>
+                    {task.description || "No description provided."}
+                  </p>
+
+                  <div className="flex items-center gap-2 text-xs" style={{ color: themeColors.textMuted }}>
+                    <User size={12} />
+                    <span>Assigned by: {task.assigner?.fullName || "Manager"}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    onClick={() => handleTaskComplete(task.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border`}
+                    style={{
+                      backgroundColor: task.status === 'COMPLETED' ? themeColors.successBg : 'transparent',
+                      color: task.status === 'COMPLETED' ? themeColors.success : themeColors.textSecondary,
+                      borderColor: task.status === 'COMPLETED' ? 'transparent' : themeColors.borderDivider
+                    }}
+                  >
+                    {task.status === 'COMPLETED' ? (
+                      <>
+                        <CheckCircle size={16} />
+                        Completed
+                      </>
+                    ) : (
+                      <>
+                        <Circle size={16} />
+                        Mark Complete
+                      </>
+                    )}
+                  </button>
+                  <span className="text-xs uppercase font-bold tracking-wider" style={{ color: themeColors.textMuted }}>{task.status?.replace('_', ' ')}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   // Profile Section
   const renderProfile = () => (

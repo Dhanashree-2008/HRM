@@ -239,6 +239,20 @@ export default function MainLayout({ logout }) {
       ]
     },
     {
+      id: 'tasks',
+      title: 'Task Management',
+      hasDropdown: false,
+      icon: <Clipboard size={20} />,
+      items: [
+        {
+          id: 'task-list',
+          label: 'Task Board',
+          icon: <Clipboard size={16} />,
+          path: '/manager/tasks'
+        },
+      ]
+    },
+    {
       id: 'attendance',
       title: 'Attendance Tracking',
       hasDropdown: false,

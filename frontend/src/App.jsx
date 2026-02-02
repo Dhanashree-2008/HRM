@@ -40,6 +40,7 @@ import ManagerAddDepartment from './pages/manager/AddDepartment';
 import ManagerAddRole from './pages/manager/AddRole';
 import ManagerLeavePolicy from './pages/manager/LeavePolicy';
 import ManagerUploadDocument from './pages/manager/UploadDocument';
+import TaskManagement from './pages/manager/TaskManagement';
 
 /* Employees (Admin) */
 import EmployeeList from "./pages/Admin/employee/EmployeeList";
@@ -293,10 +294,14 @@ function App() {
           <Route path="employees" element={<EmployeeManagement />} />
           <Route path="employees/hierarchy" element={<EmployeeHierarchy />} />
 
+
+
           {/* Departments */}
           <Route path="departments" element={<ManagerDepartmentList />} />
           <Route path="departments/add" element={<ManagerAddDepartment />} />
 
+          {/* Task Management */}
+          <Route path="tasks" element={<TaskManagement />} />
 
           {/* Roles & Permissions */}
           <Route path="roles" element={<Roles />} />
@@ -334,6 +339,7 @@ function App() {
           <Route index element={<Navigate to="dashboard" />} />
           <Route path="dashboard" element={<EmployeeHome />} />
           <Route path="attendance" element={<EmployeeHome />} />
+          <Route path="tasks" element={<EmployeeHome />} />
           <Route path="leaves" element={<EmployeeHome />} />
           <Route path="worklogs" element={<EmployeeHome />} />
           <Route path="profile" element={<EmployeeHome />} />

@@ -241,5 +241,16 @@ export const managerService = {
     createDepartment: async (payload) => {
         const response = await api.post(`/departments`, payload);
         return response.data;
+    },
+
+    // --- Task Management ---
+    createTask: async (taskData) => {
+        const response = await api.post("/tasks", taskData);
+        return response.data;
+    },
+
+    getTeamTasks: async () => {
+        const response = await api.get("/tasks/team");
+        return response.data;
     }
 };

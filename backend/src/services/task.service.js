@@ -21,14 +21,10 @@ export const createTaskService = async (user, data) => {
     throw new Error("Assigned employee not found");
   }
 
-  // if MANAGER → only assign within own department
+  // if MANAGER → allow assigning to ANYONE (Department restriction removed)
   if (user.role === "MANAGER") {
     const managerEmp = await Employee.findByPk(user.employeeId);
     if (!managerEmp) throw new Error("Manager employee profile not found");
-
-    if (managerEmp.department !== assignee.department) {
-      throw new Error("Manager can assign tasks only within their department");
-    }
   }
 
   const task = await Task.create({

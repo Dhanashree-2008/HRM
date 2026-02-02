@@ -1,7 +1,7 @@
 // src/pages/manager/Settings.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
@@ -14,6 +14,28 @@ import {
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { isDarkMode } = useOutletContext();
+
+  const themeColors = isDarkMode ? {
+    primary: '#8b5cf6',
+    accent: '#3b82f6',
+    background: '#0f172a',
+    card: '#1e293b',
+    text: '#f9fafb',
+    muted: '#9ca3af',
+    border: '#374151',
+    hover: 'rgba(59,130,246,0.1)',
+  } : {
+    primary: '#2563eb',
+    accent: '#2563eb',
+    background: '#f8fafc',
+    card: '#ffffff',
+    text: '#1e293b',
+    muted: '#64748b',
+    border: '#e2e8f0',
+    hover: '#f1f5f9',
+  };
+
   const [activeTab, setActiveTab] = useState('profile');
   const [saving, setSaving] = useState(false);
 
@@ -99,17 +121,33 @@ const Settings = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
+                <div
+                  className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold"
+                  style={{
+                    background: `linear-gradient(135deg, ${themeColors.accent}, ${themeColors.primary})`
+                  }}
+                >
                   {profileData.name ? profileData.name.substring(0, 2).toUpperCase() : 'MU'}
                 </div>
-                <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-sm border border-slate-200">
-                  <User size={16} className="text-slate-600" />
+                <button
+                  className="absolute bottom-0 right-0 p-2 rounded-full border"
+                  style={{
+                    backgroundColor: themeColors.card,
+                    borderColor: themeColors.border
+                  }}
+                >
+                  <User size={16} style={{ color: themeColors.muted }} />
                 </button>
               </div>
+
               <div>
-                <h3 className="text-xl font-bold text-slate-800">{profileData.name}</h3>
-                <p className="text-slate-600">{profileData.position || 'Employee'}</p>
-                <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                <h3 className="text-xl font-bold" style={{ color: themeColors.text }}>
+                  {profileData.name}
+                </h3>
+                <p style={{ color: themeColors.muted }}>
+                  {profileData.position || 'Employee'}
+                </p>
+                <div className="flex items-center gap-4 mt-2 text-sm" style={{ color: themeColors.muted }}>
                   <span className="flex items-center gap-1">
                     <Building size={12} />
                     {profileData.department || 'No Dept'}
@@ -123,91 +161,36 @@ const Settings = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <User size={14} className="inline mr-1" />
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={profileData.name}
-                  onChange={handleProfileChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <Mail size={14} className="inline mr-1" />
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={profileData.email}
-                  onChange={handleProfileChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <Phone size={14} className="inline mr-1" />
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={profileData.phone}
-                  onChange={handleProfileChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <Building size={14} className="inline mr-1" />
-                  Department
-                </label>
-                <input
-                  type="text"
-                  name="department"
-                  value={profileData.department}
-                  onChange={handleProfileChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Position
-                </label>
-                <input
-                  type="text"
-                  name="position"
-                  value={profileData.position}
-                  onChange={handleProfileChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <Calendar size={14} className="inline mr-1" />
-                  Joining Date
-                </label>
-                <input
-                  type="date"
-                  name="joiningDate"
-                  value={profileData.joiningDate}
-                  onChange={handleProfileChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {[
+                { name: 'name', label: 'Full Name', icon: User, type: 'text' },
+                { name: 'email', label: 'Email Address', icon: Mail, type: 'email' },
+                { name: 'phone', label: 'Phone Number', icon: Phone, type: 'tel' },
+                { name: 'department', label: 'Department', icon: Building, type: 'text' },
+                { name: 'position', label: 'Position', icon: Building, type: 'text' },
+                { name: 'joiningDate', label: 'Joining Date', icon: Calendar, type: 'date' },
+              ].map(field => (
+                <div key={field.name}>
+                  <label className="block text-sm font-medium mb-2" style={{ color: themeColors.text }}>
+                    <field.icon size={14} className="inline mr-1" />
+                    {field.label}
+                  </label>
+                  <input
+                    type={field.type}
+                    name={field.name}
+                    value={profileData[field.name]}
+                    onChange={handleProfileChange}
+                    className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.card,
+                      color: themeColors.text,
+                      border: `1px solid ${themeColors.border}`
+                    }}
+                  />
+                </div>
+              ))}
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: themeColors.text }}>
                   Bio / Description
                 </label>
                 <textarea
@@ -215,7 +198,12 @@ const Settings = () => {
                   value={profileData.bio}
                   onChange={handleProfileChange}
                   rows="4"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    backgroundColor: themeColors.card,
+                    color: themeColors.text,
+                    border: `1px solid ${themeColors.border}`
+                  }}
                 />
               </div>
             </div>
@@ -227,70 +215,69 @@ const Settings = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6" style={{ backgroundColor: themeColors.background }}>
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => navigate('/manager/dashboard')}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 rounded-lg"
+            style={{ backgroundColor: themeColors.hover }}
           >
-            <ArrowLeft size={20} className="text-slate-600" />
+            <ArrowLeft size={20} style={{ color: themeColors.muted }} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Settings</h1>
-            <p className="text-slate-600">Manage your account and system preferences</p>
+            <h1 className="text-2xl font-bold" style={{ color: themeColors.text }}>Settings</h1>
+            <p style={{ color: themeColors.muted }}>Manage your account and system preferences</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Settings Sidebar */}
+          {/* Sidebar */}
           <div className="lg:w-64">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 mb-6 lg:mb-0">
-              <nav className="space-y-1">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                        ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
-                        : 'text-slate-700 hover:bg-slate-50'
-                      }`}
-                  >
-                    <div className={activeTab === tab.id ? 'text-blue-600' : 'text-slate-500'}>
-                      {tab.icon}
-                    </div>
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
+            <div
+              className="rounded-xl shadow-sm p-6"
+              style={{
+                backgroundColor: themeColors.card,
+                border: `1px solid ${themeColors.border}`
+              }}
+            >
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    backgroundColor: activeTab === tab.id ? themeColors.hover : 'transparent',
+                    color: activeTab === tab.id ? themeColors.accent : themeColors.text
+                  }}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
 
-              <div className="mt-8 pt-6 border-t border-slate-200">
+              <div className="mt-8 pt-6 border-t" style={{ borderColor: themeColors.border }}>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${saving
-                      ? 'bg-slate-300 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
+                  className="w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 text-white"
+                  style={{
+                    backgroundColor: saving ? themeColors.border : themeColors.primary
+                  }}
                 >
-                  {saving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} />
-                      <span>Save Changes</span>
-                    </>
-                  )}
+                  <Save size={18} />
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
 
                 <button
                   onClick={() => navigate('/manager/dashboard')}
-                  className="w-full mt-3 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                  className="w-full mt-3 py-3 rounded-lg"
+                  style={{
+                    border: `1px solid ${themeColors.border}`,
+                    color: themeColors.text
+                  }}
                 >
                   Cancel
                 </button>
@@ -298,19 +285,28 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Settings Content */}
+          {/* Content */}
           <div className="flex-1">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+            <div
+              className="rounded-xl shadow-sm p-6"
+              style={{
+                backgroundColor: themeColors.card,
+                border: `1px solid ${themeColors.border}`
+              }}
+            >
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-lg bg-blue-100">
+                <div
+                  className="p-3 rounded-lg"
+                  style={{ backgroundColor: themeColors.hover }}
+                >
                   {tabs.find(t => t.id === activeTab)?.icon}
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-800">
+                  <h2 className="text-lg font-semibold" style={{ color: themeColors.text }}>
                     {tabs.find(t => t.id === activeTab)?.label || 'Settings'}
                   </h2>
-                  <p className="text-sm text-slate-600">
-                    Configure your {activeTab.toLowerCase()} settings
+                  <p className="text-sm" style={{ color: themeColors.muted }}>
+                    Configure your {activeTab} settings
                   </p>
                 </div>
               </div>

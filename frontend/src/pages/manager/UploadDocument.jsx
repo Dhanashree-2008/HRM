@@ -1,8 +1,7 @@
-// src/pages/manager/UploadDocument.jsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
   Upload,
@@ -10,47 +9,84 @@ import {
   Lock,
   Calendar,
   X,
-  CheckCircle,
   AlertCircle,
-  User
-} from 'lucide-react';
+  User,
+} from "lucide-react";
+// import { useTheme } from "@/context/ThemeContext";
 
 const UploadDocument = () => {
   const navigate = useNavigate();
+
+  // const { isDarkMode } = useTheme();
+  const isDarkMode = false; // replace with real theme state
+
+  const themeColors = isDarkMode
+    ? {
+      primary: "#8b5cf6",
+      secondary: "#10b981",
+      accent: "#3b82f6",
+      warning: "#f59e0b",
+      danger: "#ef4444",
+      background: "#0f172a",
+      card: "#1e293b",
+      text: "#f9fafb",
+      muted: "#9ca3af",
+      border: "#374151",
+    }
+    : {
+      primary: "#2563eb",
+      secondary: "#10b981",
+      accent: "#8b5cf6",
+      warning: "#f59e0b",
+      danger: "#ef4444",
+      background: "#f8fafc",
+      card: "#ffffff",
+      text: "#1e293b",
+      muted: "#64748b",
+      border: "#e2e8f0",
+    };
+
   const [file, setFile] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const [formData, setFormData] = useState({
-    employeeId: '',
-    title: '', // Backend expects 'documentType' as the main "type" label, maybe we use title as type?
-    // Admin uses 'documentType' dropdown. Manager has 'title' input.
-    // I'll map 'title' to 'documentType' or 'description'. 
-    // Let's use 'documentType' dropdown for consistency with Admin, 
-    // OR allow custom type via Title.
-    // Admin: has specific Document Types (Offer Letter, etc). 
-    // Manager might want flexibility. 
-    // Backend `uploadDocument` uses: { employeeId, documentType, category, description, confidentialLevel, expiryDate }
-    // I will add a proper Document Type select and map Title to Description if needed.
-    documentType: '',
-    category: '',
-    description: '',
-    confidentialLevel: 'Medium',
-    expiryDate: ''
+    employeeId: "",
+    documentType: "",
+    category: "",
+    description: "",
+    confidentialLevel: "Medium",
+    expiryDate: "",
   });
 
   const categories = [
-    'Employment', 'Payroll', 'Legal', 'HR', 'Verification', 'Personal', 'Policy', 'Reports', 'Other'
+    "Employment",
+    "Payroll",
+    "Legal",
+    "HR",
+    "Verification",
+    "Personal",
+    "Policy",
+    "Reports",
+    "Other",
   ];
 
   const documentTypes = [
-    "Offer Letter", "Employment Contract", "Salary Slip", "NDA Agreement",
-    "Performance Review", "Background Check", "Education Certificate",
-    "ID Proof", "Address Proof", "Experience Letter", "Other"
+    "Offer Letter",
+    "Employment Contract",
+    "Salary Slip",
+    "NDA Agreement",
+    "Performance Review",
+    "Background Check",
+    "Education Certificate",
+    "ID Proof",
+    "Address Proof",
+    "Experience Letter",
+    "Other",
   ];
 
-  const confidentialLevels = ['Low', 'Medium', 'High', 'Strict'];
+  const confidentialLevels = ["Low", "Medium", "High", "Strict"];
 
   useEffect(() => {
     fetchEmployees();
@@ -59,56 +95,47 @@ const UploadDocument = () => {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("/api/admin/employees", {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await axios.get("/api/admin/employees", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      // Admin route returns array of users or object { employees: [] }
-      // Based on Admin UploadDocument.jsx:
-      let empList = [];
-      if (Array.isArray(response.data)) {
-        empList = response.data
-          .filter(user => user.employee)
-          .map(user => ({
-            id: user.employee.id,
-            name: user.employee.fullName,
-            code: user.employee.employeeCode
+
+      let list = [];
+      if (Array.isArray(res.data)) {
+        list = res.data
+          .filter((u) => u.employee)
+          .map((u) => ({
+            id: u.employee.id,
+            name: u.employee.fullName,
+            code: u.employee.employeeCode,
           }));
-      } else if (response.data.employees) {
-        empList = response.data.employees.map(emp => ({
-          id: emp.id,
-          name: emp.fullName,
-          code: emp.employeeCode
+      } else if (res.data.employees) {
+        list = res.data.employees.map((e) => ({
+          id: e.id,
+          name: e.fullName,
+          code: e.employeeCode,
         }));
       }
-      setEmployees(empList);
-    } catch (error) {
-      console.error("Failed to fetch employees", error);
+      setEmployees(list);
+    } catch {
       toast.error("Failed to load employee list");
     }
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
   };
 
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error("File size must be less than 10MB");
-        return;
-      }
-      setFile(selectedFile);
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error("File size must be under 10MB");
+      return;
     }
+    setFile(f);
   };
 
-  const removeFile = () => {
-    setFile(null);
-  };
+  const removeFile = () => setFile(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -121,12 +148,7 @@ const UploadDocument = () => {
     setUploadProgress(0);
 
     const data = new FormData();
-    data.append("employeeId", formData.employeeId);
-    data.append("documentType", formData.documentType);
-    data.append("category", formData.category);
-    data.append("description", formData.description);
-    data.append("confidentialLevel", formData.confidentialLevel);
-    if (formData.expiryDate) data.append("expiryDate", formData.expiryDate);
+    Object.entries(formData).forEach(([k, v]) => v && data.append(k, v));
     data.append("file", file);
 
     try {
@@ -134,272 +156,244 @@ const UploadDocument = () => {
       await axios.post("/api/documents/upload", data, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data"
+          "Content-Type": "multipart/form-data",
         },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
+        onUploadProgress: (e) =>
+          setUploadProgress(Math.round((e.loaded * 100) / e.total)),
       });
 
-      toast.success("Document uploaded successfully!");
-      navigate('/manager/vault');
-    } catch (error) {
-      console.error("Upload error", error);
-      toast.error(error.response?.data?.message || "Failed to upload document");
+      toast.success("Document uploaded successfully");
+      navigate("/manager/vault");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Upload failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  const formatFileSize = (b) =>
+    b ? `${(b / 1024 / 1024).toFixed(2)} MB` : "0 MB";
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => navigate('/manager/vault')}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft size={20} className="text-slate-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Upload Document</h1>
-            <p className="text-slate-600">Upload and manage documents in secure vault</p>
-          </div>
+    <div
+      className="p-6 min-h-screen"
+      style={{ backgroundColor: themeColors.background }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-8">
+        <button
+          onClick={() => navigate("/manager/vault")}
+          className="p-2 rounded-lg"
+          style={{ color: themeColors.text }}
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: themeColors.text }}>
+            Upload Document
+          </h1>
+          <p style={{ color: themeColors.muted }}>
+            Upload and manage documents securely
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Document Details Form */}
+        {/* Form */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-lg bg-blue-100">
-                <FileText size={24} className="text-blue-600" />
-              </div>
+          <div
+            className="p-6 rounded-xl"
+            style={{
+              backgroundColor: themeColors.card,
+              border: `1px solid ${themeColors.border}`,
+            }}
+          >
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Employee */}
               <div>
-                <h2 className="text-lg font-semibold text-slate-800">Document Details</h2>
-                <p className="text-sm text-slate-600">Enter document information</p>
-              </div>
-            </div>
-
-            <form id="uploadForm" onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <User size={14} className="inline mr-1" />
-                  Employee *
+                <label style={{ color: themeColors.text }} className="block mb-2">
+                  <User size={14} className="inline mr-1" /> Employee *
                 </label>
                 <select
                   name="employeeId"
                   value={formData.employeeId}
                   onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full px-4 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: themeColors.background,
+                    color: themeColors.text,
+                    border: `1px solid ${themeColors.border}`,
+                  }}
                 >
                   <option value="">Select Employee</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.code})</option>
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name} ({e.code})
+                    </option>
                   ))}
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Document Type *
-                  </label>
-                  <select
-                    name="documentType"
-                    value={formData.documentType}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    <option value="">Select Type</option>
-                    {documentTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
+              {/* Type & Category */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <select
+                  name="documentType"
+                  value={formData.documentType}
                   onChange={handleInputChange}
-                  rows="3"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Describe the document content..."
-                />
+                  className="px-4 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: themeColors.background,
+                    color: themeColors.text,
+                    border: `1px solid ${themeColors.border}`,
+                  }}
+                >
+                  <option value="">Document Type *</option>
+                  {documentTypes.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="px-4 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: themeColors.background,
+                    color: themeColors.text,
+                    border: `1px solid ${themeColors.border}`,
+                  }}
+                >
+                  <option value="">Category *</option>
+                  {categories.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    <Lock size={14} className="inline mr-1" />
-                    Confidentiality Level
-                  </label>
-                  <select
-                    name="confidentialLevel"
-                    value={formData.confidentialLevel}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    {confidentialLevels.map(level => (
-                      <option key={level} value={level}>{level}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Description */}
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows="3"
+                placeholder="Description..."
+                className="w-full px-4 py-2 rounded-lg"
+                style={{
+                  backgroundColor: themeColors.background,
+                  color: themeColors.text,
+                  border: `1px solid ${themeColors.border}`,
+                }}
+              />
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    <Calendar size={14} className="inline mr-1" />
-                    Expiry Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              {/* Confidentiality & Expiry */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <select
+                  name="confidentialLevel"
+                  value={formData.confidentialLevel}
+                  onChange={handleInputChange}
+                  className="px-4 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: themeColors.background,
+                    color: themeColors.text,
+                    border: `1px solid ${themeColors.border}`,
+                  }}
+                >
+                  {confidentialLevels.map((l) => (
+                    <option key={l}>{l}</option>
+                  ))}
+                </select>
+
+                <input
+                  type="date"
+                  name="expiryDate"
+                  value={formData.expiryDate}
+                  onChange={handleInputChange}
+                  className="px-4 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: themeColors.background,
+                    color: themeColors.text,
+                    border: `1px solid ${themeColors.border}`,
+                  }}
+                />
               </div>
             </form>
           </div>
         </div>
 
-        {/* File Upload Section */}
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-lg bg-purple-100">
-                <Upload size={24} className="text-purple-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-800">Upload File</h2>
-                <p className="text-sm text-slate-600">Select file to upload</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              {!file ? (
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
-                  <input
-                    type="file"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="file-upload"
-                    accept=".pdf,.doc,.docx,.jpg,.png"
-                    disabled={loading}
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <div className="flex flex-col items-center">
-                      <Upload size={48} className="text-slate-400 mb-4" />
-                      <p className="text-slate-600 mb-2">Click to upload or drag and drop</p>
-                      <p className="text-sm text-slate-500">PDF, DOC, JPG, PNG (Max 10MB)</p>
-                    </div>
-                  </label>
-                </div>
-              ) : (
-                <div className="p-3 border border-slate-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-blue-500" size={24} />
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
-                        <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
-                      </div>
-                    </div>
-                    {!loading && (
-                      <button onClick={removeFile} className="p-1 hover:bg-red-50 rounded">
-                        <X size={16} className="text-red-500" />
-                      </button>
-                    )}
+        {/* File Upload */}
+        <div>
+          <div
+            className="p-6 rounded-xl"
+            style={{
+              backgroundColor: themeColors.card,
+              border: `1px solid ${themeColors.border}`,
+            }}
+          >
+            {!file ? (
+              <label className="block border-2 border-dashed p-8 rounded-lg text-center cursor-pointer"
+                style={{ borderColor: themeColors.border }}
+              >
+                <Upload size={40} style={{ color: themeColors.muted }} />
+                <p style={{ color: themeColors.muted }}>Click to upload</p>
+                <input type="file" hidden onChange={handleFileChange} />
+              </label>
+            ) : (
+              <div className="border p-3 rounded-lg"
+                style={{ borderColor: themeColors.border }}
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p style={{ color: themeColors.text }}>{file.name}</p>
+                    <p style={{ color: themeColors.muted }} className="text-sm">
+                      {formatFileSize(file.size)}
+                    </p>
                   </div>
-                  {loading && (
-                    <div className="mt-2">
-                      <div className="w-full bg-slate-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 text-right">{uploadProgress}%</p>
-                    </div>
+                  {!loading && (
+                    <button onClick={removeFile}>
+                      <X size={16} style={{ color: themeColors.danger }} />
+                    </button>
                   )}
                 </div>
-              )}
-            </div>
 
-            <div className="space-y-3">
-              <button
-                form="uploadForm"
-                type="submit"
-                disabled={loading || !file}
-                className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${loading || !file
-                    ? 'bg-slate-300 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={18} />
-                    <span>Upload Document</span>
-                  </>
+                {loading && (
+                  <div className="mt-2">
+                    <div className="h-2 rounded-full bg-slate-200">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{
+                          width: `${uploadProgress}%`,
+                          backgroundColor: themeColors.primary,
+                        }}
+                      />
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => navigate('/manager/vault')}
-                disabled={loading}
-                className="w-full py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={loading || !file}
+              className="w-full mt-4 py-3 rounded-lg font-medium"
+              style={{
+                backgroundColor: loading ? themeColors.border : themeColors.primary,
+                color: "#fff",
+              }}
+            >
+              {loading ? "Uploading..." : "Upload Document"}
+            </button>
 
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-blue-700">
-                  Documents are encrypted and stored securely. Ensure you have authorization.
+            <div className="mt-4 p-3 rounded-lg"
+              style={{
+                backgroundColor: themeColors.background,
+                border: `1px solid ${themeColors.border}`,
+              }}
+            >
+              <div className="flex gap-2">
+                <AlertCircle size={16} style={{ color: themeColors.accent }} />
+                <p style={{ color: themeColors.muted }} className="text-sm">
+                  Documents are securely stored and encrypted.
                 </p>
               </div>
             </div>

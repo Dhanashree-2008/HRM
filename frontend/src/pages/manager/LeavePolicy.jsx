@@ -1,7 +1,7 @@
 // src/pages/manager/LeavePolicy.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import {
   ArrowLeft,
   FileText,
   Edit2,
@@ -12,16 +12,43 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Users,
-  TrendingUp,
-  DollarSign,
   Shield,
-  ChevronDown
 } from 'lucide-react';
 
 const LeavePolicy = () => {
   const navigate = useNavigate();
+  const { isDarkMode } = useOutletContext();
   const [isEditing, setIsEditing] = useState(false);
+
+  // Theme definition
+  const themeColors = isDarkMode ? {
+    primary: '#8b5cf6',      // Purple
+    secondary: '#10b981',    // Green
+    accent: '#3b82f6',       // Blue
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    background: '#0f172a',   // Dark background
+    card: '#1e293b',         // Dark card
+    text: '#f9fafb',         // Light text
+    muted: '#9ca3af',        // Muted text
+    border: '#374151',       // Border color
+    inputBg: '#1e293b',      // Input background
+    hover: 'rgba(59, 130, 246, 0.1)', // Hover state
+  } : {
+    primary: '#2563eb',      // Blue
+    secondary: '#10b981',    // Green
+    accent: '#8b5cf6',       // Purple
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    background: '#f8fafc',   // Light slate
+    card: '#ffffff',         // White
+    text: '#1e293b',         // Slate 800
+    muted: '#64748b',        // Slate 500
+    border: '#e2e8f0',       // Light border
+    inputBg: '#ffffff',      // Input background
+    hover: '#f1f5f9',        // Hover state
+  };
+
   const [policies, setPolicies] = useState([
     {
       id: 1,
@@ -106,15 +133,15 @@ const LeavePolicy = () => {
 
   const handlePolicyChange = (id, field, value) => {
     if (!isEditing) return;
-    setPolicies(policies.map(policy => 
+    setPolicies(policies.map(policy =>
       policy.id === id ? { ...policy, [field]: value } : policy
     ));
   };
 
   const handleAddRule = (policyId) => {
     if (newRule.trim()) {
-      setPolicies(policies.map(policy => 
-        policy.id === policyId 
+      setPolicies(policies.map(policy =>
+        policy.id === policyId
           ? { ...policy, rules: [...policy.rules, newRule.trim()] }
           : policy
       ));
@@ -123,8 +150,8 @@ const LeavePolicy = () => {
   };
 
   const handleRemoveRule = (policyId, ruleIndex) => {
-    setPolicies(policies.map(policy => 
-      policy.id === policyId 
+    setPolicies(policies.map(policy =>
+      policy.id === policyId
         ? { ...policy, rules: policy.rules.filter((_, index) => index !== ruleIndex) }
         : policy
     ));
@@ -157,28 +184,34 @@ const LeavePolicy = () => {
   };
 
   return (
-    <div className="p-6">
+    <div style={{ backgroundColor: themeColors.background, minHeight: '100vh', color: themeColors.text }} className="p-6 transition-colors duration-300">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => navigate('/manager/leave-approval')}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              style={{
+                backgroundColor: themeColors.card,
+                borderColor: themeColors.border,
+                color: themeColors.muted
+              }}
+              className="p-2 border rounded-lg hover:text-blue-600 transition-colors"
             >
-              <ArrowLeft size={20} className="text-slate-600" />
+              <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">Leave Policy</h1>
-              <p className="text-slate-600">Configure and manage leave policies</p>
+              <h1 style={{ color: themeColors.text }} className="text-2xl font-bold">Leave Policy</h1>
+              <p style={{ color: themeColors.muted }}>Configure and manage leave policies</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {isEditing ? (
               <>
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                  style={{ borderColor: themeColors.border, color: themeColors.text }}
+                  className="px-4 py-2 border rounded-lg hover:opacity-80"
                 >
                   Cancel
                 </button>
@@ -204,11 +237,11 @@ const LeavePolicy = () => {
 
         {/* Policy Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+          <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Total Leave Types</p>
-                <p className="text-2xl font-bold text-slate-800 mt-2">{policies.length}</p>
+                <p style={{ color: themeColors.muted }} className="text-sm">Total Leave Types</p>
+                <p style={{ color: themeColors.text }} className="text-2xl font-bold mt-2">{policies.length}</p>
               </div>
               <div className="p-3 rounded-lg bg-blue-100">
                 <Calendar size={20} className="text-blue-600" />
@@ -216,11 +249,11 @@ const LeavePolicy = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+          <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Avg. Leave Days</p>
-                <p className="text-2xl font-bold text-slate-800 mt-2">
+                <p style={{ color: themeColors.muted }} className="text-sm">Avg. Leave Days</p>
+                <p style={{ color: themeColors.text }} className="text-2xl font-bold mt-2">
                   {Math.round(policies.reduce((sum, p) => sum + p.daysPerYear, 0) / policies.length)}
                 </p>
               </div>
@@ -230,11 +263,11 @@ const LeavePolicy = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+          <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Require Approval</p>
-                <p className="text-2xl font-bold text-slate-800 mt-2">
+                <p style={{ color: themeColors.muted }} className="text-sm">Require Approval</p>
+                <p style={{ color: themeColors.text }} className="text-2xl font-bold mt-2">
                   {policies.filter(p => p.approvalRequired).length}
                 </p>
               </div>
@@ -244,11 +277,11 @@ const LeavePolicy = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+          <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Last Updated</p>
-                <p className="text-2xl font-bold text-slate-800 mt-2">Today</p>
+                <p style={{ color: themeColors.muted }} className="text-sm">Last Updated</p>
+                <p style={{ color: themeColors.text }} className="text-2xl font-bold mt-2">Today</p>
               </div>
               <div className="p-3 rounded-lg bg-amber-100">
                 <FileText size={20} className="text-amber-600" />
@@ -261,53 +294,56 @@ const LeavePolicy = () => {
       {/* Policies Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {policies.map(policy => (
-          <div key={policy.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
+          <div key={policy.id} style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border overflow-hidden">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-800">{policy.type}</h3>
+                <h3 style={{ color: themeColors.text }} className="text-lg font-semibold">{policy.type}</h3>
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                   {policy.daysPerYear} days/year
                 </span>
               </div>
-              
-              <p className="text-sm text-slate-600 mb-6">{policy.description}</p>
-              
+
+              <p style={{ color: themeColors.muted }} className="text-sm mb-6">{policy.description}</p>
+
               <div className="space-y-3 mb-6">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Carry Forward:</span>
+                  <span style={{ color: themeColors.muted }}>Carry Forward:</span>
                   {isEditing ? (
                     <input
                       type="number"
                       value={policy.carryForward}
                       onChange={(e) => handlePolicyChange(policy.id, 'carryForward', e.target.value)}
-                      className="w-20 px-2 py-1 border border-slate-300 rounded text-right"
+                      style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                      className="w-20 px-2 py-1 border rounded text-right"
                     />
                   ) : (
-                    <span className="font-medium text-slate-800">{policy.carryForward} days</span>
+                    <span style={{ color: themeColors.text }} className="font-medium">{policy.carryForward} days</span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Notice Period:</span>
+                  <span style={{ color: themeColors.muted }}>Notice Period:</span>
                   {isEditing ? (
                     <input
                       type="text"
                       value={policy.noticePeriod}
                       onChange={(e) => handlePolicyChange(policy.id, 'noticePeriod', e.target.value)}
-                      className="w-24 px-2 py-1 border border-slate-300 rounded text-right"
+                      style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                      className="w-24 px-2 py-1 border rounded text-right"
                     />
                   ) : (
-                    <span className="font-medium text-slate-800">{policy.noticePeriod}</span>
+                    <span style={{ color: themeColors.text }} className="font-medium">{policy.noticePeriod}</span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Approval Required:</span>
+                  <span style={{ color: themeColors.muted }}>Approval Required:</span>
                   {isEditing ? (
                     <select
                       value={policy.approvalRequired}
                       onChange={(e) => handlePolicyChange(policy.id, 'approvalRequired', e.target.value === 'true')}
-                      className="px-2 py-1 border border-slate-300 rounded"
+                      style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                      className="px-2 py-1 border rounded"
                     >
                       <option value="true">Yes</option>
                       <option value="false">No</option>
@@ -318,27 +354,28 @@ const LeavePolicy = () => {
                     </span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Documentation:</span>
+                  <span style={{ color: themeColors.muted }}>Documentation:</span>
                   {isEditing ? (
                     <input
                       type="text"
                       value={policy.documentation}
                       onChange={(e) => handlePolicyChange(policy.id, 'documentation', e.target.value)}
-                      className="w-32 px-2 py-1 border border-slate-300 rounded text-right"
+                      style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                      className="w-32 px-2 py-1 border rounded text-right"
                     />
                   ) : (
-                    <span className="font-medium text-slate-800">{policy.documentation}</span>
+                    <span style={{ color: themeColors.text }} className="font-medium">{policy.documentation}</span>
                   )}
                 </div>
               </div>
-              
+
               <div>
-                <h4 className="font-medium text-slate-700 mb-2">Rules:</h4>
+                <h4 style={{ color: themeColors.text }} className="font-medium mb-2">Rules:</h4>
                 <ul className="space-y-1">
                   {policy.rules.map((rule, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-slate-600">
+                    <li key={index} className="flex items-start gap-2 text-sm text-slate-600" style={{ color: themeColors.muted }}>
                       <CheckCircle size={14} className="text-green-500 mt-0.5 flex-shrink-0" />
                       <span className="flex-1">{rule}</span>
                       {isEditing && (
@@ -352,7 +389,7 @@ const LeavePolicy = () => {
                     </li>
                   ))}
                 </ul>
-                
+
                 {isEditing && (
                   <div className="mt-3 flex gap-2">
                     <input
@@ -360,7 +397,8 @@ const LeavePolicy = () => {
                       value={newRule}
                       onChange={(e) => setNewRule(e.target.value)}
                       placeholder="Add new rule..."
-                      className="flex-1 px-3 py-1 border border-slate-300 rounded text-sm"
+                      style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                      className="flex-1 px-3 py-1 border rounded text-sm"
                     />
                     <button
                       onClick={() => handleAddRule(policy.id)}
@@ -372,9 +410,9 @@ const LeavePolicy = () => {
                 )}
               </div>
             </div>
-            
+
             {isEditing && (
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
+              <div style={{ backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : '#f8fafc', borderColor: themeColors.border }} className="px-6 py-4 border-t">
                 <button
                   onClick={() => setPolicies(policies.filter(p => p.id !== policy.id))}
                   className="w-full py-2 text-red-600 hover:text-red-700 text-sm font-medium"
@@ -389,79 +427,85 @@ const LeavePolicy = () => {
 
       {/* Add New Policy Form */}
       {isEditing && (
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold text-slate-800 mb-6">Add New Leave Policy</h2>
-          
+        <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6 mb-8">
+          <h2 style={{ color: themeColors.text }} className="text-lg font-semibold mb-6">Add New Leave Policy</h2>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Leave Type *</label>
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Leave Type *</label>
               <input
                 type="text"
                 value={newPolicy.type}
                 onChange={(e) => setNewPolicy({ ...newPolicy, type: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Study Leave"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Days Per Year *</label>
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Days Per Year *</label>
               <input
                 type="number"
                 value={newPolicy.daysPerYear}
                 onChange={(e) => setNewPolicy({ ...newPolicy, daysPerYear: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="15"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Carry Forward Days</label>
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Carry Forward Days</label>
               <input
                 type="number"
                 value={newPolicy.carryForward}
                 onChange={(e) => setNewPolicy({ ...newPolicy, carryForward: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="5"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Notice Period</label>
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Notice Period</label>
               <input
                 type="text"
                 value={newPolicy.noticePeriod}
                 onChange={(e) => setNewPolicy({ ...newPolicy, noticePeriod: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., 3 days"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Documentation Required</label>
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Documentation Required</label>
               <input
                 type="text"
                 value={newPolicy.documentation}
                 onChange={(e) => setNewPolicy({ ...newPolicy, documentation: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Certificate required"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Description</label>
               <input
                 type="text"
                 value={newPolicy.description}
                 onChange={(e) => setNewPolicy({ ...newPolicy, description: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Brief description"
               />
             </div>
           </div>
-          
+
           <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Rules</label>
+            <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">Rules</label>
             <div className="space-y-2">
               {newPolicy.rules.map((rule, index) => (
                 <div key={index} className="flex gap-2">
@@ -473,7 +517,8 @@ const LeavePolicy = () => {
                       newRules[index] = e.target.value;
                       setNewPolicy({ ...newPolicy, rules: newRules });
                     }}
-                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg"
+                    style={{ backgroundColor: themeColors.inputBg, borderColor: themeColors.border, color: themeColors.text }}
+                    className="flex-1 px-4 py-2 border rounded-lg"
                     placeholder="Enter a rule"
                   />
                   <button
@@ -488,18 +533,19 @@ const LeavePolicy = () => {
                   </button>
                 </div>
               ))}
-              
+
               <button
                 type="button"
                 onClick={() => setNewPolicy({ ...newPolicy, rules: [...newPolicy.rules, ''] })}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
+                style={{ borderColor: themeColors.border, color: themeColors.text }}
+                className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:opacity-80"
               >
                 <Plus size={16} />
                 <span>Add Rule</span>
               </button>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <input
@@ -509,11 +555,11 @@ const LeavePolicy = () => {
                 onChange={(e) => setNewPolicy({ ...newPolicy, approvalRequired: e.target.checked })}
                 className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="approvalRequired" className="text-sm text-slate-700">
+              <label htmlFor="approvalRequired" style={{ color: themeColors.text }} className="text-sm">
                 Approval Required
               </label>
             </div>
-            
+
             <button
               type="button"
               onClick={handleAddPolicy}
@@ -527,9 +573,9 @@ const LeavePolicy = () => {
       )}
 
       {/* Policy Guidelines */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-6">Policy Guidelines</h2>
-        
+      <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6">
+        <h2 style={{ color: themeColors.text }} className="text-lg font-semibold mb-6">Policy Guidelines</h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
             <div className="flex items-center gap-3 mb-3">
@@ -555,7 +601,7 @@ const LeavePolicy = () => {
               </li>
             </ul>
           </div>
-          
+
           <div className="p-4 border border-green-200 rounded-lg bg-green-50">
             <div className="flex items-center gap-3 mb-3">
               <CheckCircle size={20} className="text-green-600" />

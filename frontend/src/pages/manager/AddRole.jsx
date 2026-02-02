@@ -1,20 +1,47 @@
 // src/pages/manager/AddRole.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft,
   Shield,
   CheckSquare,
   Square,
   CheckCircle,
-  AlertCircle
 } from 'lucide-react';
 import roleService from '../../services/roleService';
 import { toast } from 'react-hot-toast';
 
 const AddRole = () => {
   const navigate = useNavigate();
+  const { isDarkMode } = useOutletContext();
   const [loading, setLoading] = useState(false);
+
+  // Theme definition
+  const themeColors = isDarkMode ? {
+    primary: '#8b5cf6',      // Purple
+    secondary: '#10b981',    // Green
+    accent: '#3b82f6',       // Blue
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    background: '#0f172a',   // Dark background
+    card: '#1e293b',         // Dark card
+    text: '#f9fafb',         // Light text
+    muted: '#9ca3af',        // Muted text
+    border: '#374151',       // Border color
+    inputBg: '#1e293b',      // Input background
+  } : {
+    primary: '#2563eb',      // Blue
+    secondary: '#10b981',    // Green
+    accent: '#8b5cf6',       // Purple
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    background: '#f8fafc',   // Light slate
+    card: '#ffffff',         // White
+    text: '#1e293b',         // Slate 800
+    muted: '#64748b',        // Slate 500
+    border: '#e2e8f0',       // Light border
+    inputBg: '#ffffff',      // Input background
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -99,37 +126,42 @@ const AddRole = () => {
   const totalCount = Object.keys(formData.permissions).length;
 
   return (
-    <div className="p-6">
+    <div style={{ backgroundColor: themeColors.background, minHeight: '100vh', color: themeColors.text }} className="p-6 transition-colors duration-300">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => navigate('/manager/roles')}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            style={{
+              backgroundColor: themeColors.card,
+              borderColor: themeColors.border,
+              color: themeColors.muted
+            }}
+            className="p-2 border rounded-lg hover:text-blue-600 transition-colors"
           >
-            <ArrowLeft size={20} className="text-slate-600" />
+            <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Create New Role</h1>
-            <p className="text-slate-600">Define role permissions and access levels</p>
+            <h1 style={{ color: themeColors.text }} className="text-2xl font-bold">Create New Role</h1>
+            <p style={{ color: themeColors.muted }}>Define role permissions and access levels</p>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 rounded-lg bg-blue-100">
               <Shield size={24} className="text-blue-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-800">Role Information</h2>
-              <p className="text-sm text-slate-600">Basic details about the role</p>
+              <h2 style={{ color: themeColors.text }} className="text-lg font-semibold">Role Information</h2>
+              <p style={{ color: themeColors.muted }} className="text-sm">Basic details about the role</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">
                 Role Name *
               </label>
               <input
@@ -138,13 +170,18 @@ const AddRole = () => {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: themeColors.inputBg,
+                  borderColor: themeColors.border,
+                  color: themeColors.text
+                }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g. Department Lead"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label style={{ color: themeColors.text }} className="block text-sm font-medium mb-2">
                 Description
               </label>
               <input
@@ -152,22 +189,27 @@ const AddRole = () => {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: themeColors.inputBg,
+                  borderColor: themeColors.border,
+                  color: themeColors.text
+                }}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Brief description of responsibilities"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div style={{ backgroundColor: themeColors.card, borderColor: themeColors.border }} className="rounded-xl shadow-sm border p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-lg bg-green-100">
                 <CheckSquare size={24} className="text-green-600" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-800">Permissions</h2>
-                <p className="text-sm text-slate-600">
+                <h2 style={{ color: themeColors.text }} className="text-lg font-semibold">Permissions</h2>
+                <p style={{ color: themeColors.muted }} className="text-sm">
                   Select permissions for this role ({selectedCount}/{totalCount} selected)
                 </p>
               </div>
@@ -176,7 +218,8 @@ const AddRole = () => {
             <button
               type="button"
               onClick={toggleAllPermissions}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
+              style={{ borderColor: themeColors.border, color: themeColors.text }}
+              className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               {selectedCount === totalCount ? (
                 <>
@@ -185,7 +228,7 @@ const AddRole = () => {
                 </>
               ) : (
                 <>
-                  <Square size={16} className="text-slate-400" />
+                  <Square size={16} style={{ color: themeColors.muted }} />
                   <span>Select All</span>
                 </>
               )}
@@ -194,30 +237,33 @@ const AddRole = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {permissionsList.map(permission => (
-              <div
+              <button
                 key={permission.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${formData.permissions[permission.id]
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-slate-200 hover:border-slate-300'
-                  }`}
+                type="button"
+                className={`p-4 border rounded-lg cursor-pointer transition-all text-left group`}
+                style={formData.permissions[permission.id] ? {
+                  backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#f0fdf4',
+                  borderColor: themeColors.secondary
+                } : {
+                  backgroundColor: themeColors.inputBg,
+                  borderColor: themeColors.border
+                }}
                 onClick={() => togglePermission(permission.id)}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`font-medium ${formData.permissions[permission.id] ? 'text-green-700' : 'text-slate-700'
-                    }`}>
+                  <span className="font-medium" style={{ color: formData.permissions[permission.id] ? themeColors.secondary : themeColors.text }}>
                     {permission.label}
                   </span>
                   {formData.permissions[permission.id] ? (
                     <CheckSquare size={18} className="text-green-600" />
                   ) : (
-                    <Square size={18} className="text-slate-400" />
+                    <Square size={18} style={{ color: themeColors.muted }} className="group-hover:text-slate-500" />
                   )}
                 </div>
-                <p className={`text-sm ${formData.permissions[permission.id] ? 'text-green-600' : 'text-slate-500'
-                  }`}>
+                <p className="text-sm" style={{ color: formData.permissions[permission.id] ? themeColors.secondary : themeColors.muted }}>
                   {permission.description}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -226,7 +272,11 @@ const AddRole = () => {
           <button
             type="button"
             onClick={() => navigate('/manager/roles')}
-            className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+            style={{
+              borderColor: themeColors.border,
+              color: themeColors.text
+            }}
+            className="px-6 py-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             Cancel
           </button>

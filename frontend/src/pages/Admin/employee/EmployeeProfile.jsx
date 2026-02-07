@@ -397,8 +397,6 @@ const EmployeeProfile = () => {
       const data = await res.json();
       if (res.ok) {
         setEmployee((prev) => ({ ...prev, avatar: data.profileImage }));
-        const preview = document.getElementById('profile-preview');
-        if (preview) preview.src = data.profileImage;
         alert('Profile uploaded successfully!');
       } else {
         alert(data.message || 'Upload failed');
@@ -441,13 +439,6 @@ const EmployeeProfile = () => {
     }
   };
 
-  // Wire buttons after first render
-  useEffect(() => {
-    const pbtn = document.getElementById('profile-upload-btn');
-    if (pbtn) pbtn.onclick = handleProfileUpload;
-    const rbtn = document.getElementById('resume-upload-btn');
-    if (rbtn) rbtn.onclick = handleResumeUpload;
-  }, [employee]);
 
   if (!employee) {
     return (
@@ -476,7 +467,7 @@ const EmployeeProfile = () => {
             <div className="relative">
               <img
                 id="profile-preview"
-                src={employee.avatar}
+                src={`${employee.avatar}?t=${Date.now()}`}
                 alt={employee.name}
                 className="w-24 h-24 rounded-full object-cover"
               />
@@ -516,8 +507,10 @@ const EmployeeProfile = () => {
           </div>
           <button
             id="profile-upload-btn"
+            onClick={handleProfileUpload}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
+            >
+
             Upload Profile
           </button>
         </div>

@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js",
     "seed": "node scripts/seed.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "update_salary_schema": "node scripts/update_salary_schema.js"
   },
   "keywords": [],
   "author": "",
@@ -29,6 +30,7 @@
     "nodemailer": "^7.0.11",
     "openai": "^6.16.0",
     "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.17.2",
     "sequelize": "^6.37.7"
   },
   "devDependencies": {

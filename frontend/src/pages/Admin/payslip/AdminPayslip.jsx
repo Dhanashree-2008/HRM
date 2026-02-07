@@ -89,6 +89,32 @@ const AdminPayslip = () => {
             setGenerating(false);
         }
     };
+    const downloadPayslip = async (payslipId) => {
+        try {
+            toast("Downloading payslip...");
+
+            const token = localStorage.getItem("token");
+            const response = await axios.get(`/api/payslips/${payslipId}/download`, {
+                responseType: "blob",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `payslip-${payslipId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Download error:", error);
+            toast.error("Failed to download payslip");
+        }
+    };
 
     const handlePublish = async (id) => {
         try {
@@ -109,12 +135,13 @@ const AdminPayslip = () => {
         const matchesStatus = filterStatus === "ALL" || payslip.status === filterStatus;
         return matchesSearch && matchesStatus;
     });
+    
 
     return (
         <div className="p-6 relative">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-black">
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
                         Payslips
                     </h1>
 
@@ -122,7 +149,7 @@ const AdminPayslip = () => {
                 </div>
                 <button
                     onClick={() => setShowGenerateModal(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    className="bg-purple-600 hover:bg-purple-700 text-gray-800 dark:text-purple-100 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                 >
                     <FiPlus /> Generate Payslip
                 </button>
@@ -131,7 +158,7 @@ const AdminPayslip = () => {
             {/* Filters */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-1">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black dark:text-gray-500" />
                     <input
                         type="text"
                         placeholder="Search by employee name or code..."
@@ -179,14 +206,14 @@ const AdminPayslip = () => {
                             ) : (
                                 filteredPayslips.map((payslip) => (
                                     <tr key={payslip.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                        <td className="px-6 py-4 text-gray-800 dark:text-gray-200">
-                                            <div className="font-medium">{payslip.employee?.fullName || "Unknown"}</div>
+                                        <td className="px-6 py-4 text-gray-800 dark:text-black">
+                                            <div className="font-medium text-gray-500">{payslip.employee?.fullName || "Unknown"}</div>
                                             <div className="text-xs text-gray-500">{payslip.employee?.employeeCode}</div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-800 dark:text-gray-200">
+                                        <td className="px-6 py-4 text-gray-500 dark:text-gray-200">
                                             {payslip.month}/{payslip.year}
                                         </td>
-                                        <td className="px-6 py-4 text-gray-800 dark:text-gray-200 font-medium">
+                                        <td className="px-6 py-4 text-gray-500 dark:text-gray-200 font-medium">
                                             ₹{parseFloat(payslip.netSalary).toLocaleString('en-IN')}
                                         </td>
                                         <td className="px-6 py-4">
@@ -210,6 +237,7 @@ const AdminPayslip = () => {
                                             <button
                                                 className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                                                 title="Download PDF"
+                                                onClick={() => downloadPayslip(payslip.id)}
                                             >
                                                 <FiDownload size={18} />
                                             </button>

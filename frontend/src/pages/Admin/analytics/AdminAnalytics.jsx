@@ -6,6 +6,10 @@ import {
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { useTheme, getThemeClasses } from "../../../contexts/ThemeContext";
+import { jsPDF } from "jspdf";
+import { autoTable } from "jspdf-autotable";
+
+
 
 const AdminAnalytics = () => {
   const darkMode = useTheme();
@@ -14,7 +18,8 @@ const AdminAnalytics = () => {
   const [dashboard, setDashboard] = useState(null);
   const [charts, setCharts] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [activeJobsCount, setActiveJobsCount] = useState(null);
+  const [error, setError] = useState(null); 
 
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -125,6 +130,233 @@ const AdminAnalytics = () => {
   const inputBorder = darkMode ? 'border-slate-700' : 'border-gray-300';
   const hoverBg = darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-50';
 
+  const handleExportPDF = async () => {
+      try {
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
+  
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        let yPosition = 15;
+  
+        // Add title
+        pdf.setFontSize(20);
+        pdf.text("Admin Dashboard Report", pageWidth / 2, yPosition, {
+          align: "center",
+        });
+        yPosition += 12;
+  
+        // Add timestamp
+        pdf.setFontSize(10);
+        pdf.text(
+          `Generated on: ${new Date().toLocaleString()}`,
+          pageWidth / 2,
+          yPosition,
+          { align: "center" },
+        );
+        yPosition += 8;
+  
+        // Add stats summary
+        pdf.setFontSize(12);
+        pdf.text("Key Metrics Summary", 15, yPosition);
+        yPosition += 8;
+  
+        pdf.setFontSize(10);
+        const stats = [
+          `Total Employees: ${dashboard?.totalEmployees || "—"}`,
+          `Active Users: ${dashboard?.totalActiveUsers || "—"}`,
+          `Today's Attendance: ${dashboard?.presentToday || "—"} (${dashboard?.totalEmployees ? ((dashboard.presentToday / dashboard.totalEmployees) * 100).toFixed(1) : "—"}%)`,
+          `Pending Leaves: ${dashboard?.pendingLeaves || "—"}`,
+          `On Leave Today: ${dashboard?.onLeaveToday || "—"}`,
+          `Departments: ${charts?.departments?.length || "—"}`,
+          `Active Jobs: ${activeJobsCount || "—"}`,
+        ];
+  
+        stats.forEach((stat) => {
+          if (yPosition > pageHeight - 20) {
+            pdf.addPage();
+            yPosition = 15;
+          }
+          pdf.text(stat, 15, yPosition);
+          yPosition += 6;
+        });
+  
+        yPosition += 4;
+  
+        // Add Department Data Table
+        if (charts?.departments && charts.departments.length > 0) {
+          if (yPosition > pageHeight - 40) {
+            pdf.addPage();
+            yPosition = 15;
+          }
+  
+          pdf.setFontSize(12);
+          pdf.text("Department Overview", 15, yPosition);
+          yPosition += 8;
+  
+          pdf.setFontSize(9);
+          const deptTableData = [
+            ["Department", "Employee Count"],
+            ...charts.departments.map((d) => [
+              d.department || "N/A",
+              String(d.count || 0),
+            ]),
+          ];
+  
+          autoTable(pdf, {
+            head: [deptTableData[0]],
+            body: deptTableData.slice(1),
+            startY: yPosition,
+            margin: { left: 15, right: 15 },
+            theme: "grid",
+            headStyles: {
+              fillColor: [139, 92, 246],
+              textColor: 255,
+              fontStyle: "bold",
+            },
+            bodyStyles: {
+              textColor: darkMode ? 255 : 0,
+            },
+            alternateRowStyles: {
+              fillColor: darkMode ? [45, 45, 60] : [240, 240, 245],
+            },
+          });
+  
+          yPosition = pdf.internal.pageSize.getHeight() - 20;
+        }
+  
+        // Add Attendance Data
+        if (charts?.attendance && charts.attendance.length > 0) {
+          if (yPosition > pageHeight - 40) {
+            pdf.addPage();
+            yPosition = 15;
+          }
+  
+          pdf.setFontSize(12);
+          pdf.text("Monthly Attendance Summary", 15, yPosition);
+          yPosition += 8;
+  
+          pdf.setFontSize(9);
+          const attendanceTableData = [
+            ["Month", "Present Count"],
+            ...charts.attendance.map((a) => [
+              monthNames[(Number(a.month) - 1) % 12] || "N/A",
+              String(a.count || 0),
+            ]),
+          ];
+  
+          autoTable(pdf,{
+            head: [attendanceTableData[0]],
+            body: attendanceTableData.slice(1),
+            startY: yPosition,
+            margin: { left: 15, right: 15 },
+            theme: "grid",
+            headStyles: {
+              fillColor: [139, 92, 246],
+              textColor: 255,
+              fontStyle: "bold",
+            },
+            bodyStyles: {
+              textColor: darkMode ? 255 : 0,
+            },
+            alternateRowStyles: {
+              fillColor: darkMode ? [45, 45, 60] : [240, 240, 245],
+            },
+          });
+  
+          yPosition = pdf.internal.pageSize.getHeight() - 20;
+        }
+  
+        // Add Leave Data
+        if (charts?.leaves && charts.leaves.length > 0) {
+          if (yPosition > pageHeight - 40) {
+            pdf.addPage();
+            yPosition = 15;
+          }
+  
+          pdf.setFontSize(12);
+          pdf.text("Leave Request Summary", 15, yPosition);
+          yPosition += 8;
+  
+          pdf.setFontSize(9);
+          const leaveTableData = [
+            ["Leave Type", "Count"],
+            ...charts.leaves.map((l) => [l.type || "N/A", String(l.count || 0)]),
+          ];
+  
+          autoTable(pdf,{
+            head: [leaveTableData[0]],
+            body: leaveTableData.slice(1),
+            startY: yPosition,
+            margin: { left: 15, right: 15 },
+            theme: "grid",
+            headStyles: {
+              fillColor: [139, 92, 246],
+              textColor: 255,
+              fontStyle: "bold",
+            },
+            bodyStyles: {
+              textColor: darkMode ? 255 : 0,
+            },
+            alternateRowStyles: {
+              fillColor: darkMode ? [45, 45, 60] : [240, 240, 245],
+            },
+          });
+        }
+  
+        // Add recent activities
+        if (dashboard?.recentWorklogs && dashboard.recentWorklogs.length > 0) {
+          pdf.addPage();
+          yPosition = 15;
+  
+          pdf.setFontSize(12);
+          pdf.text("Recent Activities", 15, yPosition);
+          yPosition += 8;
+  
+          pdf.setFontSize(9);
+          const activitiesTableData = [
+            ["Employee", "Action", "Date"],
+            ...dashboard.recentWorklogs
+              .slice(0, 10)
+              .map((w) => [
+                w.employee?.fullName || "Unknown",
+                w.description || "Activity",
+                w.date || "N/A",
+              ]),
+          ];
+  
+          autoTable(pdf, {
+            head: [activitiesTableData[0]],
+            body: activitiesTableData.slice(1),
+            startY: yPosition,
+            margin: { left: 15, right: 15 },
+            theme: "grid",
+            headStyles: {
+              fillColor: [139, 92, 246],
+              textColor: 255,
+              fontStyle: "bold",
+            },
+            bodyStyles: {
+              textColor: darkMode ? 255 : 0,
+            },
+            alternateRowStyles: {
+              fillColor: darkMode ? [45, 45, 60] : [240, 240, 245],
+            },
+          });
+        }
+  
+        // Save the PDF
+        const fileName = `Admin_Dashboard_Report_${new Date().getTime()}.pdf`;
+        pdf.save(fileName);
+      } catch (err) {
+        console.error("Error generating PDF:", err);
+        alert("Failed to generate PDF. Please try again.");
+      }
+    };
+
   // Fetch dashboard & charts
   useEffect(() => {
     const fetchData = async () => {
@@ -233,7 +465,7 @@ const AdminAnalytics = () => {
               <option value="quarterly">This Quarter</option>
               <option value="yearly">This Year</option>
             </select>
-            <button className={`flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors`}>
+            <button onClick={handleExportPDF} className={`flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors`}>
               <FiDownload className="w-4 h-4" />
               Export Report
             </button>

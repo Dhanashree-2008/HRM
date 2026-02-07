@@ -216,7 +216,6 @@ const AddEmployee = () => {
         qualifications: formData.qualifications,
         experience: formData.experience,
         skills: formData.skills,
-        profileImage: formData.profileImage, // Handle file upload separately if needed
       };
 
       const token = localStorage.getItem("token");
@@ -225,6 +224,36 @@ const AddEmployee = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+      const createdEmployeeId = response.data?.employee?.id;
+
+  if (formData.profileImage && createdEmployeeId) {
+    const fd = new FormData();
+    fd.append("file", formData.profileImage);
+
+  // 1️⃣ Upload image
+    const uploadRes = await axios.post("/api/upload", fd, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+  // 2️⃣ Get image URL from response
+   const imageUrl = uploadRes.data.profileImage;
+
+  // 3️⃣ Save image URL to employee
+  await axios.put(
+    `/api/admin/employees/${createdEmployeeId}`,
+    { profileImage: imageUrl },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  }
+
+
 
       // Show success message
       const emailAddresses = response.data.credentialsSentTo || [formData.email];

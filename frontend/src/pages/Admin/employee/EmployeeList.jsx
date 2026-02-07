@@ -353,7 +353,7 @@ const EmployeeList = () => {
                   <td className={`p-4 border-b ${theme.border.primary}`}>
                     <div>
                       <p className={theme.text.primary}>{emp.joinDate}</p>
-                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>2 years ago</p>
+                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>...</p>
                     </div>
                   </td>
                   <td className={`p-4 border-b ${theme.border.primary}`}>

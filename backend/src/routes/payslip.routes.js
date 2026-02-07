@@ -4,7 +4,8 @@ import {
     generatePayslip,
     getAllPayslips,
     publishPayslip,
-    getPayslipById
+    getPayslipById,
+    downloadPayslipPDF
 } from "../controllers/payslip.controller.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ router.get("/my", authMiddleware, getAllPayslips);
 router.post("/generate", authMiddleware, authorize("ADMIN"), generatePayslip);
 router.put("/:id/publish", authMiddleware, authorize("ADMIN"), publishPayslip);
 router.get("/", authMiddleware, authorize("ADMIN"), getAllPayslips);
+router.get("/:id/download", authMiddleware, downloadPayslipPDF);
 router.get("/:id", authMiddleware, getPayslipById);
 
 export default router;

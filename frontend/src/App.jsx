@@ -2,7 +2,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Toaster } from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 /* Public */
 import Login from "./pages/Login";
@@ -201,7 +202,7 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Toaster position="top-right" />
+      <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
         {/* Public */}
         <Route path="/" element={<Homepage />} />

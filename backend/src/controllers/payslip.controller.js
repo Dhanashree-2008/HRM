@@ -1,12 +1,20 @@
 import { Payslip, Employee, Attendance, LeaveRequest } from "../models/index.js";
 import { Op } from "sequelize";
+import PDFDocument from "pdfkit";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Generate Payslip (Admin only)
+/* ================= ES MODULE PATH FIX ================= */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/* =====================================================
+   Generate Payslip (Admin only)
+===================================================== */
 export const generatePayslip = async (req, res) => {
     try {
-        const { employeeId, month, year } = req.body; // e.g., month="12", year=2024
+        const { employeeId, month, year } = req.body;
 
-        // 1. Fetch Employee
         const employee = await Employee.findByPk(employeeId);
         if (!employee) {
             return res.status(404).json({ message: "Employee not found" });
@@ -17,74 +25,46 @@ export const generatePayslip = async (req, res) => {
             return res.status(400).json({ message: "Employee basic salary not set" });
         }
 
-        // 2. Fetch Attendance for the month
         const startDate = new Date(year, parseInt(month) - 1, 1);
         const endDate = new Date(year, parseInt(month), 0);
 
-        // Count Present Days
         const attendances = await Attendance.findAll({
             where: {
                 employeeId,
-                date: {
-                    [Op.between]: [startDate, endDate]
-                }
+                date: { [Op.between]: [startDate, endDate] }
             }
         });
 
-        const presentDays = attendances.length; // Simplified: 1 record = 1 day (or handle markIn/markOut validation)
+        const presentDays = attendances.length;
 
-        // 3. Fetch Unpaid Leaves
         const unpaidLeaves = await LeaveRequest.count({
             where: {
                 employeeId,
                 status: "APPROVED",
-                // Assuming we might have a type like 'Unpaid' or logic based on leave balance exhaution.
-                // For simplified version, let's assume ALL approved leaves are unpaid if specified, 
-                // OR we rely on admin inputs? 
-                // Requirement: "System automatically fetches... Approved unpaid leaves (Leave module)"
-                // Let's assume LeaveType 'Unpaid' or 'LossOfPay' exists. If not, we count all distinct approved leave days?
-                // Let's just lookup leaves. If LeaveType check is complex, we might just assume 0 for now or count all.
-                // Better: Count days in Approved LeaveRequests.
                 fromDate: { [Op.gte]: startDate },
                 toDate: { [Op.lte]: endDate }
             }
         });
-        // Note: Logic for multi-day leaves spanning months is complex. Simplified to single month fit.
 
-        // 4. Calculate Salary
-        // Requirement: Per Day Salary = Basic Salary / Total Working Days
-        // Total Working Days: Let's assume standard 30 or Days in Month?
-        // "Total working days in month"
         const totalDaysInMonth = endDate.getDate();
-        // Exclude weekends? Simplified: Use total days in month for per-day calc or standard 30.
-        // Let's use total days in month.
         const perDaySalary = basicSalary / totalDaysInMonth;
 
-        // Deduction = Unpaid Leave Days * Per Day Salary
-        // Wait, "Unpaid Leaves". If a user takes Paid Leave, it shouldn't deduct.
-        // If I can't distinguish, this might be flawed. 
-        // Let's use logic: Deduction = (TotalDays - PresentDays - PaidLeaves) * PerDay?
-        // Requirement: "Deduction = Unpaid Leave Days * Per Day Salary"
-        // Implicitly: Absent days are unpaid? Or Absent days that are APPROVED unpaid leaves?
-        // Let's stick to the requirement literally: Unpaid Leaves count.
-        // If I can't filter Unpaid, I'll default to 0 for deduction for the MVP unless status says Unpaid.
-
         const deduction = unpaidLeaves * perDaySalary;
-        let netSalary = basicSalary - deduction;
+        const netSalary = basicSalary - deduction;
 
-        // 5. Create/Update Payslip
-        // Check if exists
         let payslip = await Payslip.findOne({
             where: { employeeId, month, year }
         });
 
         if (payslip) {
-            payslip.basicSalary = basicSalary;
-            payslip.workingDays = totalDaysInMonth;
-            payslip.presentDays = presentDays;
-            payslip.unpaidLeaves = unpaidLeaves;
-            payslip.deduction = deduction;
-            payslip.netSalary = netSalary;
+            Object.assign(payslip, {
+                basicSalary,
+                workingDays: totalDaysInMonth,
+                presentDays,
+                unpaidLeaves,
+                deduction,
+                netSalary
+            });
             await payslip.save();
         } else {
             payslip = await Payslip.create({
@@ -105,11 +85,13 @@ export const generatePayslip = async (req, res) => {
 
     } catch (error) {
         console.error("Generate payslip error:", error);
-        res.status(500).json({ message: "Failed to generate payslip", error: error.message });
+        res.status(500).json({ message: "Failed to generate payslip" });
     }
 };
 
-// Publish Payslip (Admin only)
+/* =====================================================
+   Publish Payslip
+===================================================== */
 export const publishPayslip = async (req, res) => {
     try {
         const { id } = req.params;
@@ -120,12 +102,14 @@ export const publishPayslip = async (req, res) => {
         await payslip.save();
 
         res.json({ success: true, message: "Payslip published successfully" });
-    } catch (error) {
+    } catch {
         res.status(500).json({ message: "Failed to publish payslip" });
     }
 };
 
-// Get All Payslips (Admin filters, Employee own)
+/* =====================================================
+   Get All Payslips
+===================================================== */
 export const getAllPayslips = async (req, res) => {
     try {
         const { role, employeeId } = req.user;
@@ -136,53 +120,195 @@ export const getAllPayslips = async (req, res) => {
         if (year) where.year = year;
 
         if (role === "EMPLOYEE") {
-            // Employee can only see their own PUBLISHED payslips
-            if (!employeeId) return res.status(400).json({ message: "Employee profile not found" });
             where.employeeId = employeeId;
             where.status = "PUBLISHED";
-        } else if (role === "ADMIN") {
-            // Admin can see all, maybe filter by specific employee
-            if (req.query.employeeId) where.employeeId = req.query.employeeId;
+        } else if (req.query.employeeId) {
+            where.employeeId = req.query.employeeId;
         }
 
         const payslips = await Payslip.findAll({
             where,
             include: [{
                 model: Employee,
-                as: 'employee',
-                attributes: ['fullName', 'employeeCode', 'department']
+                as: "employee",
+                attributes: ["fullName", "employeeCode", "department"]
             }],
             order: [["year", "DESC"], ["month", "DESC"]]
         });
 
         res.json(payslips);
-    } catch (error) {
-        console.error("Get payslips error:", error);
+    } catch {
         res.status(500).json({ message: "Failed to fetch payslips" });
     }
 };
 
-// Get Single Payslip
+/* =====================================================
+   Get Single Payslip
+===================================================== */
 export const getPayslipById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const payslip = await Payslip.findByPk(id, {
+        const payslip = await Payslip.findByPk(req.params.id, {
             include: [{
                 model: Employee,
-                as: 'employee',
-                attributes: ['fullName', 'employeeCode', 'designation', 'department', 'dateOfJoining', 'bankAccountNo', 'pan'] // Add bank details if in model
+                as: "employee",
+                attributes: ["fullName", "employeeCode", "designation", "department"]
             }]
         });
 
         if (!payslip) return res.status(404).json({ message: "Payslip not found" });
 
-        // Authorization check
         if (req.user.role === "EMPLOYEE" && payslip.employeeId !== req.user.employeeId) {
-            return res.status(403).json({ message: "Unauthorized access to this payslip" });
+            return res.status(403).json({ message: "Unauthorized" });
         }
 
         res.json(payslip);
+    } catch {
+        res.status(500).json({ message: "Failed to fetch payslip" });
+    }
+};
+
+/* =====================================================
+   DOWNLOAD PAYSLIP PDF (ATTRACTIVE + PROFESSIONAL)
+===================================================== */
+/* =====================================================
+   DOWNLOAD PAYSLIP PDF (ATTRACTIVE + PROFESSIONAL)
+===================================================== */
+/* =====================================================
+   DOWNLOAD PAYSLIP PDF (FIXED VERSION - NO ERRORS)
+===================================================== */
+export const downloadPayslipPDF = async (req, res) => {
+    try {
+        const payslip = await Payslip.findByPk(req.params.id, {
+            include: [{
+                model: Employee,
+                as: "employee",
+                attributes: [
+                    "fullName",
+                    "employeeCode",
+                    "department",
+                    "designation",
+                    "dateOfJoining",
+                    "personalEmail",
+                    "phone"
+                ]
+            }]
+        });
+
+        if (!payslip) return res.status(404).json({ message: "Payslip not found" });
+
+        if (req.user.role === "EMPLOYEE" && payslip.employeeId !== req.user.employeeId) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        const doc = new PDFDocument({ size: "A4", margin: 40 });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=payslip-${payslip.employee.employeeCode}-${payslip.month}-${payslip.year}.pdf`
+        );
+
+        doc.pipe(res);
+
+        /* ===== LOGO ===== */
+        const logoPath = path.join(__dirname, "../assets/logo.png");
+        doc.image(logoPath, 40, 35, { width: 60 });
+
+        /* ===== HEADER ===== */
+        doc.rect(0, 0, 595, 110).fill("#4F46E5");
+        doc.fillColor("#fff")
+           .font("Helvetica-Bold")
+           .fontSize(22)
+           .text("HRM PRO", 120, 40);
+
+        doc.fontSize(12)
+           .fillColor("#E0E7FF")
+           .font("Helvetica")
+           .text("Employee Management System", 120, 70);
+
+        doc.moveDown(3);
+        doc.fillColor("#111827")
+           .fontSize(18)
+           .font("Helvetica-Bold")
+           .text("MONTHLY PAYSLIP", { align: "center" });
+
+        doc.fontSize(12)
+           .fillColor("#6B7280")
+           .text(`${payslip.month} / ${payslip.year}`, { align: "center" });
+
+        /* ===== EMPLOYEE INFO ===== */
+        doc.moveDown();
+        doc.rect(40, 190, 515, 90).stroke("#E5E7EB");
+
+        doc.font("Helvetica-Bold").text("Employee Details", 50, 200);
+        doc.font("Helvetica").fontSize(10);
+
+        doc.text(`Name: ${payslip.employee.fullName}`, 50, 220);
+        doc.text(`Employee Code: ${payslip.employee.employeeCode}`, 50, 235);
+        doc.text(`Department: ${payslip.employee.department}`, 50, 250);
+
+        doc.text(`Designation: ${payslip.employee.designation}`, 300, 220);
+        doc.text(
+            `Joining Date: ${
+                payslip.employee.dateOfJoining
+                    ? new Date(payslip.employee.dateOfJoining).toLocaleDateString()
+                    : "N/A"
+            }`,
+            300,
+            235
+        );
+        doc.text(`Pay Period: ${payslip.month}/${payslip.year}`, 300, 250);
+
+        /* ===== ATTENDANCE ===== */
+        doc.moveDown(2);
+        doc.font("Helvetica-Bold").fontSize(14).text("Attendance Summary");
+
+        doc.font("Helvetica").fontSize(11);
+        doc.text(`Working Days: ${payslip.workingDays}`);
+        doc.text(`Present Days: ${payslip.presentDays}`);
+        doc.text(`Unpaid Leaves: ${payslip.unpaidLeaves}`);
+
+        /* ===== SALARY ===== */
+        doc.moveDown();
+        doc.font("Helvetica-Bold").fontSize(14).text("Salary Breakdown");
+
+        doc.font("Helvetica").fontSize(11);
+        doc.text(`Basic Salary: ₹${Number(payslip.basicSalary).toFixed(2)}`);
+        doc.text(`Total Deduction: ₹${Number(payslip.deduction).toFixed(2)}`);
+
+        /* ===== NET SALARY ===== */
+        doc.moveDown();
+        doc.rect(40, doc.y, 515, 45).fill("#10B981");
+        doc.fillColor("#fff")
+           .font("Helvetica-Bold")
+           .fontSize(18)
+           .text(
+               `Net Salary Payable: ₹${Number(payslip.netSalary).toFixed(2)}`,
+               60,
+               doc.y + 12
+           );
+
+        /* ===== FOOTER ===== */
+        doc.fillColor("#6B7280")
+           .fontSize(9)
+           .text(
+               "This is a system-generated payslip. No signature required.",
+               40,
+               doc.page.height - 80,
+               { align: "center" }
+           );
+
+        doc.text(
+            `Generated on ${new Date().toLocaleString("en-IN")}`,
+            40,
+            doc.page.height - 60,
+            { align: "center" }
+        );
+
+        doc.end();
+
     } catch (error) {
-        res.status(500).json({ message: "Failed to fetch payslip details" });
+        console.error("Payslip PDF error:", error);
+        res.status(500).json({ message: "Failed to generate payslip PDF" });
     }
 };

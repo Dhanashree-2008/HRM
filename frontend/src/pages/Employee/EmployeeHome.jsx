@@ -1,7 +1,7 @@
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import employeeService from "../../services/employeeService";
 import { useState, useEffect } from "react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import {
   Home,
   Clock,
@@ -64,10 +64,13 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import axios from "axios";
+const downloadDocument = (fileUrl) => {
+  window.open(`http://localhost:5000${fileUrl}`, "_blank");
+};
 
 const EmployeeDashboard = () => {
   // Theme state
-
   const location = useLocation();
   const [activeSection, setActiveSection] = useState("dashboard");
 
@@ -81,8 +84,6 @@ const EmployeeDashboard = () => {
     }
   }, [location]);
 
-
-
   // Attendance state
   const [isClockedIn, setIsClockedIn] = useState(true);
   const [clockInTime, setClockInTime] = useState("09:00 AM");
@@ -95,9 +96,18 @@ const EmployeeDashboard = () => {
   const [showDateDetails, setShowDateDetails] = useState(false);
 
   // Task state
-  // Task state
   const [tasks, setTasks] = useState([]);
+  const viewDocument = (fileUrl) => {
+  if (!fileUrl) {
+    console.error("No file URL provided");
+    return;
+  }
 
+  const BASE_URL = "http://localhost:5000";
+
+  // Open in new tab for viewing
+  window.open(`${BASE_URL}${fileUrl}`, "_blank");
+  };
 
   // Form states
   const [newLeave, setNewLeave] = useState({
@@ -128,16 +138,11 @@ const EmployeeDashboard = () => {
   // Enhanced attendance data for calendar with mark-in/out details
   const [attendanceData, setAttendanceData] = useState({});
 
-
   // Holiday data
   const [holidayData, setHolidayData] = useState({});
 
   // Leave Types
   const [leaveTypes, setLeaveTypes] = useState([]);
-
-
-
-
 
   // Sample data
   const [notifications, setNotifications] = useState([
@@ -151,14 +156,8 @@ const EmployeeDashboard = () => {
     },
   ]);
 
-
-
   const [payslips, setPayslips] = useState([]);
-
-
   const [worklogs, setWorklogs] = useState([]);
-
-
   const [leaveBalance, setLeaveBalance] = useState({
     casual: 0,
     sick: 0,
@@ -166,17 +165,103 @@ const EmployeeDashboard = () => {
   });
 
   const [leaves, setLeaves] = useState([]);
-
   const [viewPayslip, setViewPayslip] = useState(null);
-
   const [personalDocuments, setPersonalDocuments] = useState([]);
-
 
   // Analytics data
   const [analytics, setAnalytics] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const downloadPayslip = async (payslipId) => {
+    try {
+      toast("Downloading payslip...");
+
+      const token = localStorage.getItem("token");
+      
+      // Use relative URL since you're using proxy in package.json
+      const res = await axios.get(
+        `/api/payslips/${payslipId}/download`,
+        {
+          responseType: "blob",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Create blob from response
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create and trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `payslip-${payslipId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Payslip downloaded successfully");
+    } catch (err) {
+      console.error("Download error:", err);
+      
+      // Better error handling
+      if (err.response) {
+        if (err.response.status === 401) {
+          toast.error("Session expired. Please login again.");
+        } else if (err.response.status === 403) {
+          toast.error("You don't have permission to download this payslip");
+        } else if (err.response.status === 404) {
+          toast.error("Payslip not found");
+        } else {
+          toast.error(`Download failed: ${err.response.data?.message || 'Server error'}`);
+        }
+      } else if (err.request) {
+        toast.error("Network error. Please check your connection.");
+      } else {
+        toast.error("Failed to download payslip");
+      }
+    }
+  };
+
+  const printPayslip = async (payslipId) => {
+    try {
+      toast("Printing payslip...");
+      
+      const token = localStorage.getItem("token");
+      
+      const res = await axios.get(
+        `/api/payslips/${payslipId}/download`,
+        {
+          responseType: "blob",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Open PDF in new tab for printing
+      const printWindow = window.open(url);
+      
+      if (printWindow) {
+        printWindow.onload = function() {
+          printWindow.print();
+        };
+      }
+      
+    } catch (err) {
+      console.error("Print error:", err);
+      toast.error("Failed to print payslip");
+    }
+  };
 
   const fetchAllData = async () => {
     try {
@@ -258,7 +343,6 @@ const EmployeeDashboard = () => {
       setAttendanceData(attendanceMap);
 
       // Check for today's attendance to set clock in/out state
-      // Check for today's attendance to set clock in/out state
       const todayStr = new Date().toISOString().split('T')[0];
 
       const todayRecord = attendanceMap[todayStr];
@@ -309,7 +393,6 @@ const EmployeeDashboard = () => {
       setPayslips(payslipsList);
       setPersonalDocuments(documentsList.documents || documentsList || []);
 
-
       // Process leave balance
       const balanceMap = { casual: 0, sick: 0, earned: 0 };
       if (Array.isArray(leaveBalances)) {
@@ -353,7 +436,6 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     fetchAllData();
   }, []);
-
 
   // Graph data - Dynamic from tasks
   const [taskCompletionData, setTaskCompletionData] = useState([]);
@@ -411,7 +493,6 @@ const EmployeeDashboard = () => {
     setTaskCompletionData(finalStats);
 
   }, [tasks]);
-
 
   // Calculate today's hours dynamically
   const [todayHours, setTodayHours] = useState("0h 0m");
@@ -538,7 +619,6 @@ const EmployeeDashboard = () => {
     setShowDateDetails(true);
   };
 
-  // Task completion handler
   // Task completion handler
   const handleTaskComplete = async (taskId) => {
     try {
@@ -728,8 +808,6 @@ const EmployeeDashboard = () => {
         return Clock;
     }
   };
-
-
 
   // Theme state - Now from context
   const { user, isDarkMode } = useOutletContext();
@@ -1075,21 +1153,6 @@ const EmployeeDashboard = () => {
               </div>
             </div>
           </div>
-          {/* ThemeToggle in header */}
-          {/* <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2.5 rounded-lg border transition-all duration-300 hover:scale-110 hover:opacity-90"
-            style={{
-              backgroundColor: themeColors.cardBackground,
-              borderColor: themeColors.borderDivider,
-            }}
-          >
-            {isDarkMode ? (
-              <Sun size={20} style={{ color: themeColors.warning }} />
-            ) : (
-              <Moon size={20} style={{ color: themeColors.textPrimary }} />
-            )}
-          </button> */}
         </div>
       </div>
     </div>
@@ -1849,7 +1912,15 @@ const EmployeeDashboard = () => {
                     <Eye size={18} style={{ color: themeColors.primary }} />
                   </button>
                   <button
-                    onClick={() => toast.success("Downloading payslip...")}
+                    onClick={() => printPayslip(payslip.id)}
+                    className="p-2 rounded-full hover:bg-opacity-20 transition-colors"
+                    style={{ backgroundColor: themeColors.primaryLight }}
+                    title="Print PDF"
+                  >
+                    <FileText size={18} style={{ color: themeColors.primary }} />
+                  </button>
+                  <button
+                    onClick={() => downloadPayslip(payslip.id)}
                     className="p-2 rounded-full hover:bg-opacity-20 transition-colors"
                     style={{ backgroundColor: themeColors.primaryLight }}
                     title="Download PDF"
@@ -2000,14 +2071,14 @@ const EmployeeDashboard = () => {
             </thead>
             <tbody>
               {filteredDocuments.map((doc) => (
-                <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" style={{ borderColor: themeColors.borderDivider }}>
+                <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-700 dark:hover:bg-gray-700/50 transition-colors" style={{ borderColor: themeColors.borderDivider }}>
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                      <div className="p-2 rounded bg-white dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
                         <FileText size={20} />
                       </div>
                       <div>
-                        <p className="font-medium" style={{ color: themeColors.textPrimary }}>{doc.name}</p>
+                        <p className="font-medium text-black" style={{ color: themeColors.textSecondary }}>{doc.name}</p>
                         <p className="text-xs md:hidden" style={{ color: themeColors.textSecondary }}>{doc.category}</p>
                       </div>
                     </div>
@@ -2028,15 +2099,17 @@ const EmployeeDashboard = () => {
                       <button
                         className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         title="View"
+                        onClick={() => viewDocument(doc.fileUrl)}
                       >
                         <Eye size={18} style={{ color: themeColors.info }} />
                       </button>
                       <button
-                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        title="Download"
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      title="Download"
+                      onClick={() => downloadDocument(doc.fileUrl)} 
                       >
-                        <Download size={18} style={{ color: themeColors.success }} />
-                      </button>
+                     <Download size={18} style={{ color: themeColors.success }} />
+                    </button>
                     </div>
                   </td>
                 </tr>
@@ -2060,8 +2133,6 @@ const EmployeeDashboard = () => {
     </div>
   );
 
-
-
   // Today's Tasks Section
   const TodaysTasksSection = () => (
     <div
@@ -2080,7 +2151,7 @@ const EmployeeDashboard = () => {
           className="text-lg font-semibold tracking-tight"
           style={{ color: themeColors.textPrimary }}
         >
-          Today’s Tasks
+          Today's Tasks
         </h3>
 
         <button
@@ -2207,7 +2278,6 @@ const EmployeeDashboard = () => {
       </div>
     </div>
   );
-
 
   // Enhanced Calendar Section with Interactive Date Details
   const CalendarSection = () => {
@@ -3147,8 +3217,8 @@ const EmployeeDashboard = () => {
                       cursor: "pointer",
                     }}
                     onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor =
-                      themeColors.cardHover)
+                      (e.currentTarget.style.backgroundColor =
+                        themeColors.cardHover)
                     }
                     onMouseLeave={(e) =>
                       (e.currentTarget.style.backgroundColor = "transparent")
@@ -3948,20 +4018,16 @@ const EmployeeDashboard = () => {
       style={{
         backgroundColor: themeColors.appBackground,
         color: themeColors.textPrimary,
-      }
-      }
+      }}
     >
       {/* Main Content */}
-      < div className="flex-1 min-w-0" >
+      <div className="flex-1 min-w-0">
         <main className="p-4 md:p-6">{renderActiveSection()}</main>
-      </div >
+      </div>
       {/* Render Modals */}
       {renderModals()}
-    </div >
+    </div>
   );
-
-
 };
 
 export default EmployeeDashboard;
-
